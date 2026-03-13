@@ -1,30 +1,410 @@
+/*
+ * This file is part of SCRefineryManager.
+ *
+ * SCRefineryManager is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * SCRefineryManager is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with SCRefineryManager. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @package SCRefineryManager
+ * @author Marian Pollzien <map@wafriv.de>
+ * @copyright (c) 2026, Marian Pollzien
+ * @license https://www.gnu.org/licenses/lgpl.html LGPLv3
+ */
+
 package antafes.sc.refinery.manager.gui.newRefinement;
 
+import antafes.sc.base.entity.Material;
+import antafes.sc.base.repository.MaterialRepository;
 import antafes.sc.refinery.manager.Configuration;
+import antafes.sc.refinery.manager.SCRefineryManager;
+import antafes.sc.refinery.manager.entity.RefinedMaterial;
+import antafes.sc.refinery.manager.entity.Refinement;
+import antafes.sc.refinery.manager.gui.element.MaterialComboBox;
+import antafes.sc.refinery.manager.gui.event.SaveRefinementEvent;
+import antafes.sc.refinery.manager.gui.event.SaveRefinementListener;
+import antafes.sc.refinery.manager.gui.filter.IntegerDocumentFilter;
+import antafes.sc.refinery.manager.repository.RefinementRepository;
+import antafes.utilities.language.LanguageInterface;
 import jakarta.annotation.PostConstruct;
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import javax.swing.*;
+import javax.swing.text.AbstractDocument;
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
-@Component
+@org.springframework.stereotype.Component
 public class NewRefinementPanel extends JPanel
 {
     @Autowired
     private Configuration configuration;
+    @Autowired
+    private MaterialRepository materialRepository;
+    @Autowired
+    private RefinementRepository refinementRepository;
+    private LanguageInterface language;
+    private JLabel costLabel;
+    private JLabel costErrorLabel;
+    private JLabel headerMaterialLabel;
+    private JLabel headerAmountLabel;
+    private JLabel headerQualityLabel;
+
+    // Fields requested by user
+    private JTextField costField;
+    private JPanel materialsContainer; // holds rows of material selection
+    private JButton addMaterialRowButton;
+    private final List<MaterialRow> materialRows = new ArrayList<>();
 
     @PostConstruct
     private void initAfterInjection()
     {
+        this.language = this.configuration.getLanguageObject();
         this.initComponents();
         this.setFieldTexts();
+        this.addListeners();
     }
 
     private void initComponents()
     {
+        setLayout(new GridBagLayout());
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.insets = new Insets(4,4,4,4);
+        constraints.fill = GridBagConstraints.HORIZONTAL;
+        constraints.anchor = GridBagConstraints.NORTHWEST;
+
+        // Cost row: label + input
+        this.costLabel = new JLabel();
+        this.costField = new JTextField(15);
+        if (this.costField.getDocument() instanceof AbstractDocument) {
+            ((AbstractDocument) this.costField.getDocument()).setDocumentFilter(new IntegerDocumentFilter());
+        }
+
+        constraints.gridx = 0;
+        constraints.gridy = 0;
+        constraints.weightx = 0;
+        add(this.costLabel, constraints);
+
+        constraints.gridx++;
+        constraints.gridy = 0;
+        constraints.weightx = 1.0;
+        add(this.costField, constraints);
+
+        this.costErrorLabel = createErrorLabel();
+        constraints.gridx = 1;
+        constraints.gridy = 1;
+        add(this.costErrorLabel, constraints);
+
+        this.materialsContainer = new JPanel();
+        this.materialsContainer.setLayout(new BoxLayout(this.materialsContainer, BoxLayout.Y_AXIS));
+
+        JPanel header = new JPanel(new GridBagLayout());
+        GridBagConstraints headerConstraints = new GridBagConstraints();
+        headerConstraints.insets = new Insets(2,2,2,2);
+        headerConstraints.fill = GridBagConstraints.HORIZONTAL;
+        this.headerMaterialLabel = new JLabel();
+        this.headerAmountLabel = new JLabel();
+        this.headerQualityLabel = new JLabel();
+
+        headerConstraints.gridx = 0;
+        headerConstraints.gridy = 0;
+        headerConstraints.weightx = 1.0;
+        header.add(this.headerMaterialLabel, headerConstraints);
+
+        headerConstraints.gridx++;
+        headerConstraints.gridy = 0;
+        headerConstraints.weightx = 0.5;
+        header.add(this.headerAmountLabel, headerConstraints);
+
+        headerConstraints.gridx++;
+        headerConstraints.gridy = 0;
+        header.add(this.headerQualityLabel, headerConstraints);
+
+        this.materialsContainer.add(header);
+
+        JPanel materialsWrapper = new JPanel(new BorderLayout());
+        materialsWrapper.add(this.materialsContainer, BorderLayout.NORTH);
+        JScrollPane scroll = new JScrollPane(materialsWrapper);
+        scroll.setPreferredSize(new Dimension(450, 150));
+
+        constraints.gridx = 0;
+        constraints.gridy = 3;
+        constraints.gridwidth = 2;
+        constraints.weighty = 1.0;
+        constraints.fill = GridBagConstraints.BOTH;
+        add(scroll, constraints);
+        constraints.gridwidth = 1;
+        constraints.weighty = 0;
+        constraints.fill = GridBagConstraints.HORIZONTAL;
+        
+        this.addMaterialRowButton = new JButton();
+        this.addMaterialRowButton.addActionListener(_ -> addMaterialRow());
+
+        constraints.gridx = 0;
+        constraints.gridy = 4;
+        constraints.gridwidth = 2;
+        add(this.addMaterialRowButton, constraints);
+        constraints.gridwidth = 1;
+        addMaterialRow();
     }
 
     private void setFieldTexts()
     {
+        this.costLabel.setText(this.language.translate("cost") + ":");
+
+        this.headerMaterialLabel.setText(this.language.translate("material"));
+        this.headerAmountLabel.setText(this.language.translate("amount"));
+        this.headerQualityLabel.setText(this.language.translate("quality"));
+
+        this.addMaterialRowButton.setText(this.language.translate("addMaterialRow"));
     }
+
+    private void addListeners()
+    {
+        SCRefineryManager.getDispatcher().addListener(
+            SaveRefinementEvent.class,
+            new SaveRefinementListener(event -> {
+                if (!validateInputs()) {
+                    return;
+                }
+
+                refinementRepository.add(buildRefinementFromInputs());
+
+                event.getDialog().dispose();
+            })
+        );
+    }
+
+    private void addMaterialRow()
+    {
+        JPanel row = new JPanel(new GridBagLayout());
+        GridBagConstraints rowConstraints = new GridBagConstraints();
+        rowConstraints.insets = new Insets(2,2,2,2);
+        rowConstraints.fill = GridBagConstraints.HORIZONTAL;
+        MaterialComboBox materialCombo = getMaterialComboBox();
+
+        rowConstraints.gridx = 0;
+        rowConstraints.gridy = 0;
+        rowConstraints.weightx = 1.0;
+        row.add(materialCombo, rowConstraints);
+
+        JTextField amountField = new JTextField(8);
+        ((AbstractDocument) amountField.getDocument()).setDocumentFilter(new IntegerDocumentFilter());
+
+        rowConstraints.gridx++;
+        rowConstraints.weightx = 0.5;
+        row.add(amountField, rowConstraints);
+
+        JTextField qualityField = new JTextField(8);
+        ((AbstractDocument) qualityField.getDocument()).setDocumentFilter(new IntegerDocumentFilter());
+
+        JLabel materialErrorLabel = createErrorLabel();
+        JLabel amountErrorLabel = createErrorLabel();
+        MaterialRow materialRow = new MaterialRow(materialCombo, amountField, qualityField, materialErrorLabel, amountErrorLabel);
+        this.materialRows.add(materialRow);
+
+        rowConstraints.gridx++;
+        row.add(qualityField, rowConstraints);
+
+        rowConstraints.gridy = 1;
+        rowConstraints.gridx = 0;
+        rowConstraints.weightx = 1.0;
+        row.add(materialErrorLabel, rowConstraints);
+
+        rowConstraints.gridx = 1;
+        rowConstraints.weightx = 0.5;
+        row.add(amountErrorLabel, rowConstraints);
+
+        JButton remove = createRemoveButton(row, materialRow);
+        rowConstraints.gridy = 0;
+        rowConstraints.gridx = 3;
+        rowConstraints.weightx = 0;
+        row.add(remove, rowConstraints);
+
+        this.materialsContainer.add(row);
+        this.materialsContainer.revalidate();
+        this.materialsContainer.repaint();
+
+        materialCombo.refresh();
+        updateRemoveButtonsState();
+    }
+
+    private @NonNull JButton createRemoveButton(JPanel row, MaterialRow materialRow)
+    {
+        JButton remove = new JButton("-");
+        remove.setActionCommand("remove");
+        remove.addActionListener(_ -> {
+            if (this.materialRows.size() > 1) {
+                this.materialRows.remove(materialRow);
+                this.materialsContainer.remove(row);
+                this.materialsContainer.revalidate();
+                this.materialsContainer.repaint();
+            } else {
+                if (materialRow.materialField().getItemCount() > 0) {
+                    materialRow.materialField().setSelectedIndex(0);
+                }
+                materialRow.amountField().setText("");
+                materialRow.qualityField().setText("");
+                hideError(materialRow.materialErrorLabel());
+                hideError(materialRow.amountErrorLabel());
+            }
+            updateRemoveButtonsState();
+        });
+        return remove;
+    }
+
+    private @NonNull MaterialComboBox getMaterialComboBox()
+    {
+        return new MaterialComboBox(this.materialRepository);
+    }
+
+    private void updateRemoveButtonsState() {
+        int count = this.materialRows.size();
+        Arrays.stream(this.materialsContainer.getComponents())
+            .filter(rowComp -> rowComp instanceof JPanel)
+            .map(rowComp -> (JPanel) rowComp)
+            .flatMap(row -> Arrays.stream(row.getComponents()))
+            .filter(child -> child instanceof JButton)
+            .map(child -> (JButton) child)
+            .filter(btn -> "remove".equals(btn.getActionCommand()))
+            .forEachOrdered(btn -> btn.setEnabled(count > 1));
+    }
+
+    private Refinement buildRefinementFromInputs() {
+        Refinement refinement = new Refinement();
+        Integer cost = parseInteger(this.costField.getText());
+        if (cost != null) {
+            refinement.setCost(cost);
+        }
+
+        Map<UUID, RefinedMaterial> materials = new HashMap<>();
+        for (MaterialRow materialRow : this.materialRows) {
+            Material material = getSelectedMaterial(materialRow);
+            Integer amount = parseInteger(materialRow.amountField().getText());
+            Integer quality = parseInteger(materialRow.qualityField().getText());
+
+            if (material != null) {
+                RefinedMaterial rm = new RefinedMaterial();
+                rm.setKey(UUID.randomUUID());
+                rm.setBaseMaterial(material);
+                rm.setAmount(amount == null ? 0 : amount);
+                rm.setQuality(quality == null ? 0 : quality);
+                rm.setSellingPrice(0);
+                materials.put(rm.getKey(), rm);
+            }
+        }
+
+        refinement.setMaterials(materials);
+        return refinement;
+    }
+
+    private boolean validateInputs()
+    {
+        clearValidationErrors();
+
+        boolean valid = true;
+        Component firstInvalidComponent = null;
+
+        if (parseInteger(this.costField.getText()) == null) {
+            showError(this.costErrorLabel, "costRequired");
+            valid = false;
+            firstInvalidComponent = this.costField;
+        }
+
+        for (MaterialRow materialRow : this.materialRows) {
+            if (getSelectedMaterial(materialRow) == null) {
+                showError(materialRow.materialErrorLabel(), "materialRequired");
+                valid = false;
+                if (firstInvalidComponent == null) {
+                    firstInvalidComponent = materialRow.materialField();
+                }
+            }
+
+            if (parseInteger(materialRow.amountField().getText()) == null) {
+                showError(materialRow.amountErrorLabel(), "amountRequired");
+                valid = false;
+                if (firstInvalidComponent == null) {
+                    firstInvalidComponent = materialRow.amountField();
+                }
+            }
+        }
+
+        if (firstInvalidComponent != null) {
+            firstInvalidComponent.requestFocusInWindow();
+        }
+
+        revalidate();
+        repaint();
+        return valid;
+    }
+
+    private void clearValidationErrors()
+    {
+        hideError(this.costErrorLabel);
+        this.materialRows.forEach(materialRow -> {
+            hideError(materialRow.materialErrorLabel());
+            hideError(materialRow.amountErrorLabel());
+        });
+    }
+
+    private JLabel createErrorLabel()
+    {
+        JLabel label = new JLabel();
+        label.setForeground(Color.RED);
+        label.setVisible(false);
+        return label;
+    }
+
+    private void showError(JLabel label, String messageKey)
+    {
+        label.setText(this.language.translate(messageKey));
+        label.setVisible(true);
+    }
+
+    private void hideError(JLabel label)
+    {
+        label.setText("");
+        label.setVisible(false);
+    }
+
+    private Integer parseInteger(String text)
+    {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private Material getSelectedMaterial(MaterialRow materialRow)
+    {
+        Object selectedItem = materialRow.materialField().getSelectedItem();
+        return selectedItem instanceof Material material ? material : null;
+    }
+
+    private record MaterialRow(
+        MaterialComboBox materialField,
+        JTextField amountField,
+        JTextField qualityField,
+        JLabel materialErrorLabel,
+        JLabel amountErrorLabel
+    ) {}
 }

@@ -20,32 +20,25 @@
  * @license https://www.gnu.org/licenses/lgpl.html LGPLv3
  */
 
-package antafes.sc.refinery.manager.language;
+package antafes.sc.refinery.manager.gui.event;
 
-public class English extends antafes.utilities.language.English
+import scripts.laniax.framework.event_dispatcher.EventListener;
+
+import java.util.function.Consumer;
+
+public class SaveRefinementListener extends EventListener<SaveRefinementEvent>
 {
-    public English()
+    public SaveRefinementListener()
     {
-        super();
-        this.general();
-        this.newRefinement();
     }
 
-    private void general()
+    public SaveRefinementListener(Consumer<SaveRefinementEvent> consumer)
     {
-        this.getTranslations().put("title", "SC Refinery Manager");
+        super(consumer);
     }
 
-    private void newRefinement()
+    public SaveRefinementListener(Consumer<SaveRefinementEvent> consumer, int priority)
     {
-        this.getTranslations().put("newRefinement", "Create new refinement");
-        this.getTranslations().put("cost", "Cost");
-        this.getTranslations().put("addMaterialRow", "Add material");
-        this.getTranslations().put("material", "Material");
-        this.getTranslations().put("amount", "Amount");
-        this.getTranslations().put("quality", "Quality");
-        this.getTranslations().put("costRequired", "Cost is required.");
-        this.getTranslations().put("materialRequired", "Material is required.");
-        this.getTranslations().put("amountRequired", "Amount is required.");
+        super(consumer, priority);
     }
 }
