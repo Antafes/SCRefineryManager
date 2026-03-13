@@ -26,12 +26,15 @@ import antafes.sc.refinery.manager.Configuration;
 import antafes.sc.refinery.manager.SCRefineryManager;
 import antafes.sc.refinery.manager.gui.event.*;
 import antafes.sc.refinery.manager.gui.newRefinement.NewRefinementDialog;
+import antafes.sc.refinery.manager.repository.RefinementRepository;
 import antafes.utilities.language.LanguageInterface;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
-import org.springframework.stereotype.Component;
 
 import javax.swing.*;
+import javax.swing.border.TitledBorder;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
@@ -39,21 +42,27 @@ import java.awt.event.WindowEvent;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-@Component
+@org.springframework.stereotype.Component
 public class BaseWindow extends JFrame
 {
-    private final ApplicationContext applicationContext;
-    private final Configuration configuration;
-    private final LanguageInterface language;
-    private JTabbedPane panel;
+    @Autowired
+    private ApplicationContext applicationContext;
+    @Autowired
+    private Configuration configuration;
+    @Autowired
+    private RefinementRepository refinementRepository;
+
+    private LanguageInterface language;
+    private JPanel panel;
+    private TitledBorder refinementsBorder;
+    private RefinementTable refinementsTable;
     private JMenu fileMenu;
     private JMenuItem closeMenuItem;
     private JMenuItem newMenuItem;
 
-    public BaseWindow(@Autowired ApplicationContext applicationContext, @Autowired Configuration configuration)
+    @PostConstruct
+    private void initAfterInjection()
     {
-        this.applicationContext = applicationContext;
-        this.configuration = configuration;
         this.language = this.configuration.getLanguageObject();
         this.initComponents();
         this.registerEvents();
@@ -65,7 +74,13 @@ public class BaseWindow extends JFrame
     {
         this.createMenu();
 
-        this.panel = new JTabbedPane();
+        this.panel = new JPanel(new BorderLayout());
+        this.refinementsBorder = BorderFactory.createTitledBorder("");
+        this.panel.setBorder(this.refinementsBorder);
+        this.refinementsTable = new RefinementTable(this, this.refinementRepository, this.language);
+
+        JScrollPane refinementsScrollPane = new JScrollPane(this.refinementsTable);
+        this.panel.add(refinementsScrollPane, BorderLayout.CENTER);
 
         GroupLayout layout = new GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -131,6 +146,7 @@ public class BaseWindow extends JFrame
 
         dialog.setBounds(x, y, width, height);
         dialog.setVisible(true);
+        this.refreshRefinementsTable();
     }
 
     private void registerEscapeCloseOperation(JDialog dialog)
@@ -162,12 +178,16 @@ public class BaseWindow extends JFrame
 
     private void setFieldTexts()
     {
+        this.setTitle(this.language.translate("title"));
+        this.refinementsBorder.setTitle(this.language.translate("refinements"));
+        this.panel.repaint();
         this.fileMenu.setText(this.language.translate("file"));
         this.fileMenu.setMnemonic(this.language.translate("fileMnemonic").charAt(0));
         this.newMenuItem.setText(this.language.translate("new"));
         this.newMenuItem.setMnemonic(this.language.translate("newMnemonic").charAt(0));
         this.closeMenuItem.setText(this.language.translate("quit"));
         this.closeMenuItem.setMnemonic(this.language.translate("quitMnemonic").charAt(0));
+        this.refinementsTable.refreshTexts();
     }
 
     private void init()
@@ -182,4 +202,10 @@ public class BaseWindow extends JFrame
         this.setLocation(this.configuration.getWindowLocation());
         this.setExtendedState(this.configuration.getExtendedState());
     }
+
+    public void refreshRefinementsTable()
+    {
+        this.refinementsTable.refreshData();
+    }
+
 }

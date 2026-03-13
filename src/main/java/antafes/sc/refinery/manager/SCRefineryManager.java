@@ -67,6 +67,7 @@ public class SCRefineryManager extends Application implements CommandLineRunner
             BaseWindow baseWindow = this.applicationContext.getBean(BaseWindow.class);
             new Splash(Utilities.getResourceInJar("images/splash.png"), 2000, baseWindow);
             this.warmUp();
+            baseWindow.refreshRefinementsTable();
             Toolkit kit = Toolkit.getDefaultToolkit();
             Image img = kit.createImage(Utilities.getResourceInJar("images/logo.png"));
             baseWindow.setIconImage(img);

@@ -34,6 +34,12 @@ public class English extends antafes.utilities.language.English
     private void general()
     {
         this.getTranslations().put("title", "SC Refinery Manager");
+        this.getTranslations().put("refinements", "Refinements");
+        this.getTranslations().put("revenue", "Revenue");
+        this.getTranslations().put("profit", "Profit");
+        this.getTranslations().put("actions", "Actions");
+        this.getTranslations().put("deleteRefinementTitle", "Delete refinement");
+        this.getTranslations().put("deleteRefinementConfirm", "Do you really want to delete refinement #%d?");
     }
 
     private void newRefinement()

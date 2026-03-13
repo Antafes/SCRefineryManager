@@ -26,3 +26,4 @@ replay_pid*
 /.m2/settings.xml
 /target/
 /resources/
+/.aiassistant/

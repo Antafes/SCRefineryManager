@@ -48,11 +48,8 @@ class RefinementRepositoryTest
     @Test
     void addPersistsAndLoadsRefinementData() throws Exception
     {
-        Configuration configuration = mock(Configuration.class);
-        when(configuration.getBasePath()).thenReturn(this.tempDir.toString() + File.separator);
-
-        RefinementRepository repository = new RefinementRepository();
-        ReflectionTestUtils.setField(repository, "configuration", configuration);
+        Configuration configuration = createConfiguration();
+        RefinementRepository repository = createRepository(configuration);
 
         UUID materialKey = UUID.randomUUID();
         Map<UUID, RefinedMaterial> materials = new HashMap<>();
@@ -74,8 +71,7 @@ class RefinementRepositoryTest
             .contains("<materials>")
             .doesNotContain("HashMap");
 
-        RefinementRepository loadedRepository = new RefinementRepository();
-        ReflectionTestUtils.setField(loadedRepository, "configuration", configuration);
+        RefinementRepository loadedRepository = createRepository(configuration);
         loadedRepository.loadData();
 
         assertThat(loadedRepository.findAll()).hasSize(1);
@@ -85,5 +81,38 @@ class RefinementRepositoryTest
         assertThat(loadedRefinement.getMaterials()).containsKey(materialKey);
         assertThat(loadedRefinement.getMaterials().get(materialKey).getAmount()).isEqualTo(200);
         assertThat(loadedRefinement.getMaterials().get(materialKey).getQuality()).isEqualTo(95);
+    }
+
+    @Test
+    void removePersistsDeletion() throws Exception
+    {
+        Configuration configuration = createConfiguration();
+        RefinementRepository repository = createRepository(configuration);
+
+        repository.add(new Refinement()
+            .setMaterials(new HashMap<>())
+            .setCost(150));
+
+        repository.remove(1);
+
+        RefinementRepository loadedRepository = createRepository(configuration);
+        loadedRepository.loadData();
+
+        assertThat(loadedRepository.findAll()).isEmpty();
+        assertThat(Files.readString(this.tempDir.resolve("refinements.xml"))).doesNotContain("<refinement");
+    }
+
+    private Configuration createConfiguration()
+    {
+        Configuration configuration = mock(Configuration.class);
+        when(configuration.getBasePath()).thenReturn(this.tempDir.toString() + File.separator);
+        return configuration;
+    }
+
+    private RefinementRepository createRepository(Configuration configuration)
+    {
+        RefinementRepository repository = new RefinementRepository();
+        ReflectionTestUtils.setField(repository, "configuration", configuration);
+        return repository;
     }
 }

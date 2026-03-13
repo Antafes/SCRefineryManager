@@ -59,20 +59,6 @@ public class RefinementRepository extends BaseRepository<Integer, Refinement>
         return this.refinements.get(key);
     }
 
-    @Override
-    protected void loadData()
-    {
-        try {
-            File refinementsFile = new File(this.configuration.getBasePath() + "refinements.xml");
-            this.checkFileExists(refinementsFile);
-            Unmarshaller unmarshaller = JAXBContext.newInstance(RefinementListWrapper.class).createUnmarshaller();
-            RefinementListWrapper wrapper = (RefinementListWrapper) unmarshaller.unmarshal(new FileInputStream(refinementsFile));
-            wrapper.refinements.forEach(refinement -> this.refinements.put(refinement.getKey(), refinement));
-        } catch (JAXBException | IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public void saveData()
     {
         try {
@@ -84,6 +70,49 @@ public class RefinementRepository extends BaseRepository<Integer, Refinement>
             this.refinements.forEach((_, production) -> list.refinements.add(production));
             marshaller.marshal(list, productionsFile);
         } catch (IOException | JAXBException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Add a new refinement to the repository and persist the change.
+     * If the refinement has no key set, a new unique key will be assigned.
+     */
+    public synchronized void add(Refinement refinement)
+    {
+        if (refinement == null) return;
+        if (refinement.getKey() == null) {
+            int key = this.refinements.keySet().stream().mapToInt(i -> i).max().orElse(0) + 1;
+            refinement.setKey(key);
+        }
+        this.refinements.put(refinement.getKey(), refinement);
+        saveData();
+    }
+
+    /**
+     * Remove the refinement identified by the given key and persist the updated repository state.
+     * The method fails fast when the key does not exist so callers do not silently delete nothing.
+     */
+    public synchronized void remove(Integer key)
+    {
+        if (!this.refinements.containsKey(key)) {
+            throw new IllegalArgumentException("Unknown refinement key: " + key);
+        }
+
+        this.refinements.remove(key);
+        saveData();
+    }
+
+    @Override
+    protected void loadData()
+    {
+        try {
+            File refinementsFile = new File(this.configuration.getBasePath() + "refinements.xml");
+            this.checkFileExists(refinementsFile);
+            Unmarshaller unmarshaller = JAXBContext.newInstance(RefinementListWrapper.class).createUnmarshaller();
+            RefinementListWrapper wrapper = (RefinementListWrapper) unmarshaller.unmarshal(new FileInputStream(refinementsFile));
+            wrapper.refinements.forEach(refinement -> this.refinements.put(refinement.getKey(), refinement));
+        } catch (JAXBException | IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -111,20 +140,5 @@ public class RefinementRepository extends BaseRepository<Integer, Refinement>
     {
         @XmlElement(name = "refinement")
         private final List<Refinement> refinements = new ArrayList<>();
-    }
-
-    /**
-     * Add a new refinement to the repository and persist the change.
-     * If the refinement has no key set, a new unique key will be assigned.
-     */
-    public synchronized void add(Refinement refinement)
-    {
-        if (refinement == null) return;
-        if (refinement.getKey() == null) {
-            int key = this.refinements.keySet().stream().mapToInt(i -> i).max().orElse(0) + 1;
-            refinement.setKey(key);
-        }
-        this.refinements.put(refinement.getKey(), refinement);
-        saveData();
     }
 }
