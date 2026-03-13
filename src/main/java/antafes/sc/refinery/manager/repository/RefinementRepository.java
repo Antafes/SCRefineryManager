@@ -34,8 +34,6 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-import javax.xml.XMLConstants;
-import javax.xml.validation.SchemaFactory;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -78,14 +76,13 @@ public class RefinementRepository extends BaseRepository<Integer, Refinement>
     public void saveData()
     {
         try {
-            SchemaFactory sf = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
             File productionsFile = new File(this.configuration.getBasePath() + "refinements.xml");
             this.checkFileExists(productionsFile);
 
             Marshaller marshaller = JAXBContext.newInstance(RefinementListWrapper.class).createMarshaller();
             RefinementListWrapper list = new RefinementListWrapper();
             this.refinements.forEach((_, production) -> list.refinements.add(production));
-            marshaller.marshal(this.refinements, productionsFile);
+            marshaller.marshal(list, productionsFile);
         } catch (IOException | JAXBException e) {
             throw new RuntimeException(e);
         }

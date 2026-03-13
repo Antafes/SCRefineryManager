@@ -28,7 +28,6 @@ import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -41,7 +40,7 @@ public class Refinement
     @XmlAttribute
     private Integer key;
     @XmlElement
-    @XmlJavaTypeAdapter(type = HashMap.class, value = RefinedMaterialsAdapter.class)
+    @XmlJavaTypeAdapter(RefinedMaterialsAdapter.class)
     private Map<UUID, RefinedMaterial> materials;
     @XmlElement
     private int cost;
