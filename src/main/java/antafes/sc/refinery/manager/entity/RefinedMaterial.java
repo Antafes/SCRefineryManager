@@ -23,5 +23,7 @@ public class RefinedMaterial
     @XmlElement
     private int amount;
     @XmlElement
+    private int quality;
+    @XmlElement
     private int sellingPrice;
 }
