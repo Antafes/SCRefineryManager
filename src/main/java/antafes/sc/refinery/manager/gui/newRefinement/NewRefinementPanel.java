@@ -168,7 +168,7 @@ public class NewRefinementPanel extends JPanel
         constraints.fill = GridBagConstraints.HORIZONTAL;
         
         this.addMaterialRowButton = new JButton();
-        this.addMaterialRowButton.addActionListener(e -> addMaterialRow());
+        this.addMaterialRowButton.addActionListener(_ -> addMaterialRow());
 
         constraints.gridx = 0;
         constraints.gridy = 4;
@@ -210,7 +210,7 @@ public class NewRefinementPanel extends JPanel
         );
         SCRefineryManager.getDispatcher().addListener(
             ResetNewRefinementDialogEvent.class,
-            new ResetNewRefinementDialogListener(event -> resetWritableFields())
+            new ResetNewRefinementDialogListener(_ -> resetWritableFields())
         );
         SCRefineryManager.getDispatcher().addListener(
             LanguageChangedEvent.class,
@@ -300,7 +300,7 @@ public class NewRefinementPanel extends JPanel
     {
         JButton remove = new JButton("-");
         remove.setActionCommand("remove");
-        remove.addActionListener(e -> {
+        remove.addActionListener(_ -> {
             if (this.materialRows.size() > 1) {
                 this.materialRows.remove(materialRow);
                 this.materialsContainer.remove(row);

@@ -148,14 +148,14 @@ public class BaseWindow extends JFrame
         this.languageEnglishItem.setSelected(currentLanguage == Configuration.Language.ENGLISH);
         this.languageGermanItem.setSelected(currentLanguage == Configuration.Language.GERMAN);
 
-        this.languageEnglishItem.addActionListener(e -> this.switchLanguage(Configuration.Language.ENGLISH));
-        this.languageGermanItem.addActionListener(e -> this.switchLanguage(Configuration.Language.GERMAN));
+        this.languageEnglishItem.addActionListener(_ -> this.switchLanguage(Configuration.Language.ENGLISH));
+        this.languageGermanItem.addActionListener(_ -> this.switchLanguage(Configuration.Language.GERMAN));
 
         this.newMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, InputEvent.CTRL_DOWN_MASK));
-        this.newMenuItem.addActionListener(e -> SCRefineryManager.getDispatcher().dispatch(new NewRefinementEvent()));
+        this.newMenuItem.addActionListener(_ -> SCRefineryManager.getDispatcher().dispatch(new NewRefinementEvent()));
 
         this.closeMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, InputEvent.CTRL_DOWN_MASK));
-        this.closeMenuItem.addActionListener(e -> SCRefineryManager.getDispatcher().dispatch(new CloseProgramEvent()));
+        this.closeMenuItem.addActionListener(_ -> SCRefineryManager.getDispatcher().dispatch(new CloseProgramEvent()));
 
         this.setJMenuBar(menuBar);
     }
@@ -164,7 +164,7 @@ public class BaseWindow extends JFrame
     {
         SCRefineryManager.getDispatcher().addListener(
             CloseProgramEvent.class,
-            new CloseProgramListener(event -> this.closeProgram())
+            new CloseProgramListener(_ -> this.closeProgram())
         );
         SCRefineryManager.getDispatcher().addListener(
             RegisterEscapeCloseOperationEvent.class,
@@ -172,7 +172,7 @@ public class BaseWindow extends JFrame
         );
         SCRefineryManager.getDispatcher().addListener(
             NewRefinementEvent.class,
-            new NewRefinementListener(event -> this.openNewRefinementDialog())
+            new NewRefinementListener(_ -> this.openNewRefinementDialog())
         );
         SCRefineryManager.getDispatcher().addListener(
             EditRefinementEvent.class,
