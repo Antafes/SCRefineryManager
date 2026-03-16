@@ -41,6 +41,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -86,7 +88,11 @@ class RefinementRepositoryTest
             .setQuality(95)
             .setSellingPrice(700));
 
+        ZonedDateTime createdAt = ZonedDateTime.of(2026, 3, 16, 15, 12, 0, 0, ZoneOffset.ofHours(2));
+        ZonedDateTime expectedUtc = createdAt.withZoneSameInstant(ZoneOffset.UTC);
+
         this.refinementRepository.add(new Refinement()
+            .setCreatedAt(createdAt)
             .setMaterials(materials)
             .setCost(300));
 
@@ -96,6 +102,7 @@ class RefinementRepositoryTest
             .contains("<refinements")
             .containsPattern("<refinement(\\s|/|>)")
             .contains("<materials")
+            .contains("2026-03-16T13:12Z")
             .doesNotContain("HashMap");
 
         // Simulate a reload from disk.
@@ -106,6 +113,8 @@ class RefinementRepositoryTest
 
         Refinement loadedRefinement = this.refinementRepository.findOne(1);
         assertThat(loadedRefinement.getCost()).isEqualTo(300);
+        assertThat(loadedRefinement.getCreatedAt()).isEqualTo(expectedUtc);
+        assertThat(loadedRefinement.getCreatedAt().toInstant()).isEqualTo(createdAt.toInstant());
         assertThat(loadedRefinement.getMaterials()).containsKey(refinedMaterialKey);
         assertThat(loadedRefinement.getMaterials().get(refinedMaterialKey).getAmount()).isEqualTo(200);
         assertThat(loadedRefinement.getMaterials().get(refinedMaterialKey).getQuality()).isEqualTo(95);

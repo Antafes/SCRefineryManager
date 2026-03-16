@@ -42,6 +42,7 @@ public class English extends antafes.utilities.language.English
         this.getTranslations().put("deleteRefinementTitle", "Delete refinement");
         this.getTranslations().put("deleteRefinementConfirm", "Do you really want to delete refinement #%d?");
         this.getTranslations().put("editRefinement", "Edit refinement #%d");
+        this.getTranslations().put("createdAt", "Created at");
     }
 
     private void newRefinement()

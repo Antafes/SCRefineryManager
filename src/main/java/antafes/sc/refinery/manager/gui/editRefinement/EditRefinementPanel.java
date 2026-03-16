@@ -207,6 +207,12 @@ public class EditRefinementPanel extends JPanel
 
                 Refinement refinement = buildRefinementFromInputs();
                 refinement.setKey(event.getKey());
+
+                Refinement existing = this.refinementRepository.findOne(event.getKey());
+                if (existing != null) {
+                    refinement.setCreatedAt(existing.getCreatedAt());
+                }
+
                 refinementRepository.update(event.getKey(), refinement);
 
                 event.getDialog().dispose();

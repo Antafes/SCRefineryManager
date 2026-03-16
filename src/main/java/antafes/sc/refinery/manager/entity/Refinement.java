@@ -23,11 +23,13 @@
 package antafes.sc.refinery.manager.entity;
 
 import antafes.sc.refinery.manager.repository.adapter.RefinedMaterialsAdapter;
+import antafes.sc.refinery.manager.repository.adapter.ZonedDateTimeAdapter;
 import jakarta.xml.bind.annotation.*;
 import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -40,9 +42,15 @@ public class Refinement
 {
     @XmlAttribute
     private Integer key;
+
+    @XmlElement
+    @XmlJavaTypeAdapter(ZonedDateTimeAdapter.class)
+    private ZonedDateTime createdAt;
+
     @XmlElement
     @XmlJavaTypeAdapter(RefinedMaterialsAdapter.class)
     private Map<UUID, RefinedMaterial> materials = new HashMap<>();
+
     @XmlElement
     private int cost;
 

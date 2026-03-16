@@ -39,12 +39,20 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 @Repository
 public class RefinementRepository extends BaseRepository<Integer, Refinement>
 {
     private final Map<Integer, Refinement> refinements = new HashMap<>();
+
+    private static ZonedDateTime normalizeUtc(ZonedDateTime createdAt)
+    {
+        ZonedDateTime value = createdAt != null ? createdAt : ZonedDateTime.now(ZoneOffset.UTC);
+        return value.withZoneSameInstant(ZoneOffset.UTC);
+    }
     @Autowired
     private Configuration configuration;
     @Autowired
@@ -70,7 +78,11 @@ public class RefinementRepository extends BaseRepository<Integer, Refinement>
 
             Marshaller marshaller = JAXBContext.newInstance(RefinementListWrapper.class).createMarshaller();
             RefinementListWrapper list = new RefinementListWrapper();
-            this.refinements.forEach((_, refinement) -> list.refinements.add(refinement));
+            this.refinements.forEach((_, refinement) -> {
+                if (refinement == null) return;
+                refinement.setCreatedAt(normalizeUtc(refinement.getCreatedAt()));
+                list.refinements.add(refinement);
+            });
             marshaller.marshal(list, productionsFile);
         } catch (IOException | JAXBException e) {
             throw new RuntimeException(e);
@@ -88,6 +100,7 @@ public class RefinementRepository extends BaseRepository<Integer, Refinement>
             int key = this.refinements.keySet().stream().mapToInt(i -> i).max().orElse(0) + 1;
             refinement.setKey(key);
         }
+        refinement.setCreatedAt(normalizeUtc(refinement.getCreatedAt()));
         this.refinements.put(refinement.getKey(), refinement);
         saveData();
     }
@@ -103,6 +116,7 @@ public class RefinementRepository extends BaseRepository<Integer, Refinement>
         }
 
         refinement.setKey(key);
+        refinement.setCreatedAt(normalizeUtc(refinement.getCreatedAt()));
         this.refinements.put(key, refinement);
         saveData();
     }
@@ -130,6 +144,7 @@ public class RefinementRepository extends BaseRepository<Integer, Refinement>
             Unmarshaller unmarshaller = JAXBContext.newInstance(RefinementListWrapper.class).createUnmarshaller();
             RefinementListWrapper wrapper = (RefinementListWrapper) unmarshaller.unmarshal(new FileInputStream(refinementsFile));
             wrapper.refinements.forEach(refinement -> {
+                refinement.setCreatedAt(normalizeUtc(refinement.getCreatedAt()));
                 refinement.getMaterials()
                     .forEach((_, refinedMaterial) -> refinedMaterial.setBaseMaterial(this.materialRepository.findOne(refinedMaterial.getBaseMaterial().getKey())));
                 this.refinements.put(refinement.getKey(), refinement);

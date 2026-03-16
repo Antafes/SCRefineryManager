@@ -38,6 +38,10 @@ import antafes.utilities.language.LanguageInterface;
 import javax.swing.*;
 import javax.swing.table.*;
 import java.awt.*;
+import java.awt.event.MouseEvent;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -47,6 +51,8 @@ public class RefinementTable extends JTable
     private static final int ACTIONS_COLUMN_INDEX = 5;
     private static final int MATERIALS_COLUMN_INDEX = 4;
     private static final int BASE_ROW_HEIGHT = 32;
+
+    private static final DateTimeFormatter CREATED_AT_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final Component parentComponent;
     private final RefinementRepository refinementRepository;
@@ -168,6 +174,32 @@ public class RefinementTable extends JTable
         return component;
     }
 
+    @Override
+    public String getToolTipText(MouseEvent event)
+    {
+        if (event == null) {
+            return super.getToolTipText();
+        }
+
+        int viewRow = rowAtPoint(event.getPoint());
+        int viewColumn = columnAtPoint(event.getPoint());
+
+        if (viewRow < 0 || viewColumn != 0) {
+            return super.getToolTipText(event);
+        }
+
+        int modelRow = convertRowIndexToModel(viewRow);
+        ZonedDateTime createdAt = this.refinementTableModel.getCreatedAtFor(modelRow);
+        if (createdAt == null) {
+            return null;
+        }
+
+        ZonedDateTime displayCreatedAt = createdAt.withZoneSameInstant(ZoneId.systemDefault());
+        String formatted = displayCreatedAt.format(CREATED_AT_FORMATTER);
+
+        return "%s: %s".formatted(this.language.translate("createdAt"), formatted);
+    }
+
     private void deleteRefinement(int key)
     {
         int confirmation = JOptionPane.showConfirmDialog(
@@ -195,7 +227,7 @@ public class RefinementTable extends JTable
         return button;
     }
 
-    private record RefinementTableRow(int key, int cost, int revenue, int profit, String materials) {}
+    private record RefinementTableRow(int key, int cost, int revenue, int profit, String materials, ZonedDateTime createdAt) {}
 
     private class RefinementTableModel extends AbstractTableModel
     {
@@ -214,7 +246,8 @@ public class RefinementTable extends JTable
                         refinement.getCost(),
                         revenue,
                         revenue - refinement.getCost(),
-                        formatMaterials(refinement)
+                        formatMaterials(refinement),
+                        refinement.getCreatedAt()
                     );
                 })
                 .forEachOrdered(this.rows::add);
@@ -277,6 +310,14 @@ public class RefinementTable extends JTable
                 case 1, 2, 3, 4 -> String.class;
                 default -> Object.class;
             };
+        }
+
+        ZonedDateTime getCreatedAtFor(int modelRow)
+        {
+            if (modelRow < 0 || modelRow >= this.rows.size()) {
+                return null;
+            }
+            return this.rows.get(modelRow).createdAt();
         }
 
         private String formatMaterials(Refinement refinement)

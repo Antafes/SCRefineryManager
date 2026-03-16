@@ -195,7 +195,11 @@ public class NewRefinementPanel extends JPanel
                     return;
                 }
 
-                refinementRepository.add(buildRefinementFromInputs());
+                Refinement refinement = buildRefinementFromInputs();
+                if (refinement.getCreatedAt() == null) {
+                    refinement.setCreatedAt(java.time.ZonedDateTime.now());
+                }
+                refinementRepository.add(refinement);
 
                 event.getDialog().dispose();
             })
