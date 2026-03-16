@@ -29,6 +29,8 @@ import antafes.sc.refinery.manager.SCRefineryManager;
 import antafes.sc.refinery.manager.entity.RefinedMaterial;
 import antafes.sc.refinery.manager.entity.Refinement;
 import antafes.sc.refinery.manager.gui.element.MaterialComboBox;
+import antafes.sc.refinery.manager.gui.event.ResetNewRefinementDialogEvent;
+import antafes.sc.refinery.manager.gui.event.ResetNewRefinementDialogListener;
 import antafes.sc.refinery.manager.gui.event.SaveRefinementEvent;
 import antafes.sc.refinery.manager.gui.event.SaveRefinementListener;
 import antafes.sc.refinery.manager.gui.filter.IntegerDocumentFilter;
@@ -186,6 +188,11 @@ public class NewRefinementPanel extends JPanel
 
                 event.getDialog().dispose();
             })
+        );
+
+        SCRefineryManager.getDispatcher().addListener(
+            ResetNewRefinementDialogEvent.class,
+            new ResetNewRefinementDialogListener(_ -> resetWritableFields())
         );
     }
 
@@ -398,6 +405,28 @@ public class NewRefinementPanel extends JPanel
     {
         Object selectedItem = materialRow.materialField().getSelectedItem();
         return selectedItem instanceof Material material ? material : null;
+    }
+
+    public void resetWritableFields()
+    {
+        if (this.costField == null || this.materialsContainer == null) {
+            return;
+        }
+
+        clearValidationErrors();
+        this.costField.setText("");
+
+        // Remove all material rows (keep the header row at index 0) and rebuild a single empty row.
+        for (int i = this.materialsContainer.getComponentCount() - 1; i >= 1; i--) {
+            this.materialsContainer.remove(i);
+        }
+        this.materialRows.clear();
+        addMaterialRow();
+
+        this.materialsContainer.revalidate();
+        this.materialsContainer.repaint();
+        revalidate();
+        repaint();
     }
 
     private record MaterialRow(

@@ -25,6 +25,7 @@ package antafes.sc.refinery.manager.gui.newRefinement;
 import antafes.sc.refinery.manager.Configuration;
 import antafes.sc.refinery.manager.SCRefineryManager;
 import antafes.sc.refinery.manager.gui.event.RegisterEscapeCloseOperationEvent;
+import antafes.sc.refinery.manager.gui.event.ResetNewRefinementDialogEvent;
 import antafes.utilities.language.LanguageInterface;
 import jakarta.annotation.PostConstruct;
 import lombok.NonNull;
@@ -46,6 +47,8 @@ public class NewRefinementDialog extends JDialog
     @Autowired
     private Configuration configuration;
     private LanguageInterface language;
+    private NewRefinementPanel panel;
+
     // Dialog buttons
     private JButton cancelButton;
     private JButton saveButton;
@@ -69,7 +72,7 @@ public class NewRefinementDialog extends JDialog
         setResizable(false);
         SCRefineryManager.getDispatcher().dispatch(new RegisterEscapeCloseOperationEvent(this));
 
-        NewRefinementPanel panel = this.applicationContext.getBean(NewRefinementPanel.class);
+        this.panel = this.applicationContext.getBean(NewRefinementPanel.class);
         GridBagLayout layout = new GridBagLayout();
         this.setLayout(layout);
 
@@ -84,7 +87,7 @@ public class NewRefinementDialog extends JDialog
         constraints.fill = GridBagConstraints.BOTH;
         constraints.anchor = GridBagConstraints.NORTHWEST;
 
-        this.add(panel, constraints);
+        this.add(this.panel, constraints);
 
         constraints.gridy++;
         constraints.weighty = 0;
@@ -102,6 +105,13 @@ public class NewRefinementDialog extends JDialog
         this.add(buttonsPanel, constraints);
 
         pack();
+    }
+
+    @Override
+    public void dispose()
+    {
+        SCRefineryManager.getDispatcher().dispatch(new ResetNewRefinementDialogEvent());
+        super.dispose();
     }
 
     private void setFieldTexts()
