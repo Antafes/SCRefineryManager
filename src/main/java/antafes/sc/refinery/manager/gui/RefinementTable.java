@@ -26,6 +26,7 @@ import antafes.sc.base.entity.Material;
 import antafes.sc.refinery.manager.entity.Refinement;
 import antafes.sc.refinery.manager.entity.RefinedMaterial;
 import antafes.sc.refinery.manager.gui.element.renderer.MultiLineCellRenderer;
+import antafes.sc.refinery.manager.gui.element.renderer.PaddedDefaultTableCellRenderer;
 import antafes.sc.refinery.manager.gui.icon.PenIcon;
 import antafes.sc.refinery.manager.gui.icon.TrashIcon;
 import antafes.sc.refinery.manager.repository.RefinementRepository;
@@ -35,6 +36,7 @@ import antafes.sc.refinery.manager.util.Name;
 import antafes.utilities.language.LanguageInterface;
 
 import javax.swing.*;
+import javax.swing.border.Border;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellEditor;
@@ -52,6 +54,8 @@ public class RefinementTable extends JTable
     private static final int ACTIONS_COLUMN_INDEX = 5;
     private static final int MATERIALS_COLUMN_INDEX = 4;
     private static final int BASE_ROW_HEIGHT = 32;
+
+    private static final Border INNER_LR_PADDING = BorderFactory.createEmptyBorder(0, 2, 0, 2);
 
     private final Component parentComponent;
     private final RefinementRepository refinementRepository;
@@ -89,8 +93,7 @@ public class RefinementTable extends JTable
         this.getTableHeader().setReorderingAllowed(false);
         this.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 
-        DefaultTableCellRenderer rightAlignedRenderer = new DefaultTableCellRenderer();
-        rightAlignedRenderer.setHorizontalAlignment(SwingConstants.RIGHT);
+        DefaultTableCellRenderer rightAlignedRenderer = new PaddedDefaultTableCellRenderer(SwingConstants.RIGHT);
         this.getColumnModel().getColumn(0).setCellRenderer(rightAlignedRenderer);
         this.getColumnModel().getColumn(1).setCellRenderer(rightAlignedRenderer);
         this.getColumnModel().getColumn(2).setCellRenderer(rightAlignedRenderer);
@@ -336,6 +339,7 @@ public class RefinementTable extends JTable
         {
             super(new FlowLayout(FlowLayout.CENTER, 4, 2));
             setOpaque(true);
+            setBorder(null);
             add(this.editButton);
             add(this.deleteButton);
         }
@@ -348,6 +352,7 @@ public class RefinementTable extends JTable
             } else {
                 setBackground(table.getBackground());
             }
+
             return this;
         }
     }
@@ -384,6 +389,10 @@ public class RefinementTable extends JTable
         {
             this.currentRow = (RefinementTableRow) value;
             this.panel.setBackground(table.getSelectionBackground());
+
+            // Keep the editor border empty to avoid shrinking the content area.
+            this.panel.setBorder(null);
+
             return this.panel;
         }
     }
