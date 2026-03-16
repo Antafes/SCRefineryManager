@@ -39,6 +39,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -74,6 +75,16 @@ public class BaseWindow extends JFrame
     private void initComponents()
     {
         this.createMenu();
+
+        setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e)
+            {
+                // Persist window state/size on shutdown.
+                SCRefineryManager.getDispatcher().dispatch(new CloseProgramEvent());
+            }
+        });
 
         this.panel = new JPanel(new BorderLayout());
         this.refinementsBorder = BorderFactory.createTitledBorder("");
@@ -176,6 +187,9 @@ public class BaseWindow extends JFrame
     {
         this.configuration.setWindowLocation(this.getLocationOnScreen());
         this.configuration.setExtendedState(this.getExtendedState());
+        if ((this.getExtendedState() & Frame.MAXIMIZED_BOTH) == 0) {
+            this.configuration.setWindowSize(this.getSize());
+        }
         this.configuration.saveProperties();
         System.exit(0);
     }
@@ -204,6 +218,12 @@ public class BaseWindow extends JFrame
         }
 
         this.setLocation(this.configuration.getWindowLocation());
+
+        Dimension windowSize = this.configuration.getWindowSize();
+        if (windowSize != null && windowSize.width > 0 && windowSize.height > 0) {
+            this.setSize(windowSize);
+        }
+
         this.setExtendedState(this.configuration.getExtendedState());
     }
 

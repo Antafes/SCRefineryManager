@@ -23,6 +23,7 @@
 package antafes.sc.refinery.manager;
 
 import antafes.sc.refinery.manager.language.English;
+import antafes.sc.refinery.manager.util.IntegerUtil;
 import antafes.utilities.BaseConfiguration;
 import antafes.utilities.Utilities;
 import lombok.Getter;
@@ -66,6 +67,23 @@ public class Configuration extends BaseConfiguration
     public static String getDataPath()
     {
         return DATA_PATH;
+    }
+
+    public Dimension getWindowSize()
+    {
+        int width = IntegerUtil.parsePositiveInt(this.getProperties().getProperty("windowWidth"), 1000);
+        int height = IntegerUtil.parsePositiveInt(this.getProperties().getProperty("windowHeight"), 500);
+        return new Dimension(width, height);
+    }
+
+    public void setWindowSize(Dimension size)
+    {
+        if (size == null) {
+            return;
+        }
+
+        this.getProperties().setProperty("windowWidth", String.valueOf(size.width));
+        this.getProperties().setProperty("windowHeight", String.valueOf(size.height));
     }
 
     @Getter
