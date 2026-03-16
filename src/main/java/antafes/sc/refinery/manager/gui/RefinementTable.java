@@ -29,6 +29,7 @@ import antafes.sc.refinery.manager.gui.icon.PenIcon;
 import antafes.sc.refinery.manager.gui.icon.TrashIcon;
 import antafes.sc.refinery.manager.repository.RefinementRepository;
 import antafes.sc.refinery.manager.util.Cargo;
+import antafes.sc.refinery.manager.util.Currency;
 import antafes.sc.refinery.manager.util.Name;
 import antafes.utilities.language.LanguageInterface;
 
@@ -198,9 +199,9 @@ public class RefinementTable extends JTable
             RefinementTableRow row = this.rows.get(rowIndex);
             return switch (columnIndex) {
                 case 0 -> row.key;
-                case 1 -> row.cost;
-                case 2 -> row.revenue;
-                case 3 -> row.profit;
+                case 1 -> Currency.format(row.cost);
+                case 2 -> Currency.format(row.revenue);
+                case 3 -> Currency.format(row.profit);
                 case 4 -> row.materials;
                 case 5 -> row;
                 default -> null;
@@ -218,8 +219,9 @@ public class RefinementTable extends JTable
         {
             return switch (columnIndex) {
                 case ACTIONS_COLUMN_INDEX -> RefinementTableRow.class;
-                case 4 -> String.class;
-                default -> Integer.class;
+                case 0 -> Integer.class;
+                case 1, 2, 3, 4 -> String.class;
+                default -> Object.class;
             };
         }
 
