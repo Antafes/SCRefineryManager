@@ -82,6 +82,7 @@ public class RefinementTable extends JTable
         this.setRowHeight(32);
         this.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         this.getTableHeader().setReorderingAllowed(false);
+        this.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 
         DefaultTableCellRenderer rightAlignedRenderer = new DefaultTableCellRenderer();
         rightAlignedRenderer.setHorizontalAlignment(SwingConstants.RIGHT);
@@ -89,6 +90,51 @@ public class RefinementTable extends JTable
         this.getColumnModel().getColumn(1).setCellRenderer(rightAlignedRenderer);
         this.getColumnModel().getColumn(2).setCellRenderer(rightAlignedRenderer);
         this.getColumnModel().getColumn(3).setCellRenderer(rightAlignedRenderer);
+
+        FontMetrics cellFm = this.getFontMetrics(this.getFont());
+        FontMetrics headerFm = this.getTableHeader() != null
+            ? this.getTableHeader().getFontMetrics(this.getTableHeader().getFont())
+            : cellFm;
+
+        // Rough allowance for renderer border + inter-cell spacing.
+        int padding = 24;
+
+        int keyWidth = Math.max(
+            cellFm.stringWidth("999"),
+            headerFm.stringWidth(this.getColumnName(0))
+        ) + padding;
+
+        String moneySample = Currency.format(9_999_999);
+        String moneySampleNegative = Currency.format(-9_999_999);
+        int moneyContentWidth = Math.max(
+            cellFm.stringWidth(moneySample),
+            cellFm.stringWidth(moneySampleNegative)
+        );
+        int moneyHeaderWidth = Math.max(
+            headerFm.stringWidth(this.getColumnName(1)),
+            Math.max(
+                headerFm.stringWidth(this.getColumnName(2)),
+                headerFm.stringWidth(this.getColumnName(3))
+            )
+        );
+        int moneyWidth = Math.max(moneyContentWidth, moneyHeaderWidth) + padding;
+
+        TableColumn keyColumn = this.getColumnModel().getColumn(0);
+        keyColumn.setMinWidth(keyWidth);
+        keyColumn.setPreferredWidth(keyWidth);
+        keyColumn.setMaxWidth(keyWidth);
+
+        for (int i = 1; i <= 3; i++) {
+            TableColumn moneyColumn = this.getColumnModel().getColumn(i);
+            moneyColumn.setMinWidth(moneyWidth);
+            moneyColumn.setPreferredWidth(moneyWidth);
+            moneyColumn.setMaxWidth(moneyWidth);
+        }
+
+        // Materials should receive most of the remaining width.
+        TableColumn materialsColumn = this.getColumnModel().getColumn(4);
+        materialsColumn.setMinWidth(200);
+        materialsColumn.setPreferredWidth(800);
 
         TableColumn actionsColumn = this.getColumnModel().getColumn(ACTIONS_COLUMN_INDEX);
         actionsColumn.setMinWidth(110);
