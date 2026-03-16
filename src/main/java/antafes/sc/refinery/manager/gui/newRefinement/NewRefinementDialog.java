@@ -93,10 +93,10 @@ public class NewRefinementDialog extends JDialog
         constraints.fill = GridBagConstraints.HORIZONTAL;
         this.cancelButton = new JButton();
         this.cancelButton.setActionCommand("cancel");
-        this.cancelButton.addActionListener(_ -> dispose());
+        this.cancelButton.addActionListener(e -> dispose());
         this.saveButton = new JButton();
         this.saveButton.setActionCommand("save");
-        this.saveButton.addActionListener(_ -> SCRefineryManager.getDispatcher().dispatch(new antafes.sc.refinery.manager.gui.event.SaveRefinementEvent(this)));
+        this.saveButton.addActionListener(e -> SCRefineryManager.getDispatcher().dispatch(new antafes.sc.refinery.manager.gui.event.SaveRefinementEvent(this)));
 
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
         buttonsPanel.add(this.saveButton);

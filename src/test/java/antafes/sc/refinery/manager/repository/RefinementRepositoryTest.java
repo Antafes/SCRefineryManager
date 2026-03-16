@@ -22,11 +22,20 @@
 
 package antafes.sc.refinery.manager.repository;
 
+import antafes.sc.base.entity.Material;
+import antafes.sc.base.repository.MaterialRepository;
 import antafes.sc.refinery.manager.Configuration;
 import antafes.sc.refinery.manager.entity.RefinedMaterial;
 import antafes.sc.refinery.manager.entity.Refinement;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.File;
@@ -37,82 +46,136 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+@SpringBootTest(classes = RefinementRepositoryTest.TestConfiguration.class)
 class RefinementRepositoryTest
 {
+    @MockitoBean
+    private Configuration configuration;
+
+    @MockitoBean
+    private MaterialRepository materialRepository;
+
+    @Autowired
+    private TestRefinementRepository refinementRepository;
+
     @TempDir
     Path tempDir;
+
+    @BeforeEach
+    void setUp()
+    {
+        when(configuration.getBasePath()).thenReturn(this.tempDir.toString() + File.separator);
+        this.refinementRepository.findAll().clear();
+    }
 
     @Test
     void addPersistsAndLoadsRefinementData() throws Exception
     {
-        Configuration configuration = createConfiguration();
-        RefinementRepository repository = createRepository(configuration);
+        String baseMaterialKey = UUID.randomUUID().toString();
+        Material baseMaterial = materialWithKey(baseMaterialKey);
+        when(this.materialRepository.findOne(baseMaterialKey)).thenReturn(baseMaterial);
 
-        UUID materialKey = UUID.randomUUID();
+        UUID refinedMaterialKey = UUID.randomUUID();
         Map<UUID, RefinedMaterial> materials = new HashMap<>();
-        materials.put(materialKey, new RefinedMaterial()
-            .setKey(materialKey)
+        materials.put(refinedMaterialKey, new RefinedMaterial()
+            .setKey(refinedMaterialKey)
+            .setBaseMaterial(baseMaterial)
             .setAmount(200)
             .setQuality(95)
             .setSellingPrice(700));
 
-        repository.add(new Refinement()
+        this.refinementRepository.add(new Refinement()
             .setMaterials(materials)
             .setCost(300));
 
         Path refinementFile = this.tempDir.resolve("refinements.xml");
         assertThat(refinementFile).exists();
         assertThat(Files.readString(refinementFile))
-            .contains("<refinements>")
-            .contains("<refinement")
-            .contains("<materials>")
+            .contains("<refinements")
+            .containsPattern("<refinement(\\s|/|>)")
+            .contains("<materials")
             .doesNotContain("HashMap");
 
-        RefinementRepository loadedRepository = createRepository(configuration);
-        loadedRepository.loadData();
+        // Simulate a reload from disk.
+        this.refinementRepository.findAll().clear();
+        this.refinementRepository.loadDataFromDisk();
 
-        assertThat(loadedRepository.findAll()).hasSize(1);
+        assertThat(this.refinementRepository.findAll()).hasSize(1);
 
-        Refinement loadedRefinement = loadedRepository.findOne(1);
+        Refinement loadedRefinement = this.refinementRepository.findOne(1);
         assertThat(loadedRefinement.getCost()).isEqualTo(300);
-        assertThat(loadedRefinement.getMaterials()).containsKey(materialKey);
-        assertThat(loadedRefinement.getMaterials().get(materialKey).getAmount()).isEqualTo(200);
-        assertThat(loadedRefinement.getMaterials().get(materialKey).getQuality()).isEqualTo(95);
+        assertThat(loadedRefinement.getMaterials()).containsKey(refinedMaterialKey);
+        assertThat(loadedRefinement.getMaterials().get(refinedMaterialKey).getAmount()).isEqualTo(200);
+        assertThat(loadedRefinement.getMaterials().get(refinedMaterialKey).getQuality()).isEqualTo(95);
+        assertThat(loadedRefinement.getMaterials().get(refinedMaterialKey).getBaseMaterial().getKey()).isEqualTo(baseMaterialKey);
     }
 
     @Test
     void removePersistsDeletion() throws Exception
     {
-        Configuration configuration = createConfiguration();
-        RefinementRepository repository = createRepository(configuration);
+        String baseMaterialKey = UUID.randomUUID().toString();
+        Material baseMaterial = materialWithKey(baseMaterialKey);
+        when(this.materialRepository.findOne(baseMaterialKey)).thenReturn(baseMaterial);
 
-        repository.add(new Refinement()
-            .setMaterials(new HashMap<>())
+        UUID refinedMaterialKey = UUID.randomUUID();
+        Map<UUID, RefinedMaterial> materials = new HashMap<>();
+        materials.put(refinedMaterialKey, new RefinedMaterial()
+            .setKey(refinedMaterialKey)
+            .setBaseMaterial(baseMaterial)
+            .setAmount(200)
+            .setQuality(95)
+            .setSellingPrice(700));
+
+        this.refinementRepository.add(new Refinement()
+            .setMaterials(materials)
             .setCost(150));
 
-        repository.remove(1);
+        this.refinementRepository.remove(1);
 
-        RefinementRepository loadedRepository = createRepository(configuration);
-        loadedRepository.loadData();
+        // Reload from disk.
+        this.refinementRepository.findAll().clear();
+        this.refinementRepository.loadDataFromDisk();
 
-        assertThat(loadedRepository.findAll()).isEmpty();
-        assertThat(Files.readString(this.tempDir.resolve("refinements.xml"))).doesNotContain("<refinement");
+        assertThat(this.refinementRepository.findAll()).isEmpty();
+        assertThat(Files.readString(this.tempDir.resolve("refinements.xml")))
+            .doesNotContainPattern("<refinement(\\s|/|>)");
     }
 
-    private Configuration createConfiguration()
+    private static Material materialWithKey(String key) throws Exception
     {
-        Configuration configuration = mock(Configuration.class);
-        when(configuration.getBasePath()).thenReturn(this.tempDir.toString() + File.separator);
-        return configuration;
+        Material material = Material.class.getDeclaredConstructor().newInstance();
+
+        try {
+            ReflectionTestUtils.setField(material, "key", key);
+        } catch (IllegalArgumentException ignored) {
+            ReflectionTestUtils.setField(material, "id", key);
+        }
+
+        return material;
     }
 
-    private RefinementRepository createRepository(Configuration configuration)
+    @SpringBootConfiguration
+    @EnableAutoConfiguration
+    static class TestConfiguration {
+        @Bean
+        TestRefinementRepository refinementRepository()
+        {
+            return new TestRefinementRepository();
+        }
+    }
+
+    static class TestRefinementRepository extends RefinementRepository
     {
-        RefinementRepository repository = new RefinementRepository();
-        ReflectionTestUtils.setField(repository, "configuration", configuration);
-        return repository;
+        @Override
+        protected void loadData()
+        {
+        }
+
+        void loadDataFromDisk()
+        {
+            super.loadData();
+        }
     }
 }

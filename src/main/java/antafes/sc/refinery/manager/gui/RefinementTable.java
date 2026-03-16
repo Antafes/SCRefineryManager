@@ -291,7 +291,7 @@ public class RefinementTable extends JTable
                 Object materialKey = displayMaterial != null ? displayMaterial.getKey() : null;
                 MaterialAggregate aggregate = combined.computeIfAbsent(
                     materialKey,
-                    _ -> new MaterialAggregate(displayMaterial, 0)
+                    k -> new MaterialAggregate(displayMaterial, 0)
                 );
                 aggregate.amountCSCU += refinedMaterial.getAmount();
             });
@@ -369,7 +369,7 @@ public class RefinementTable extends JTable
             this.panel.add(editButton);
             this.panel.add(deleteButton);
 
-            editButton.addActionListener(_ -> {
+            editButton.addActionListener(e -> {
                 stopCellEditing();
                 if (this.currentRow != null) {
                     antafes.sc.refinery.manager.SCRefineryManager.getDispatcher().dispatch(
@@ -377,7 +377,7 @@ public class RefinementTable extends JTable
                     );
                 }
             });
-            deleteButton.addActionListener(_ -> {
+            deleteButton.addActionListener(e -> {
                 stopCellEditing();
                 if (this.currentRow != null) {
                     RefinementTable.this.deleteRefinement(this.currentRow.key);

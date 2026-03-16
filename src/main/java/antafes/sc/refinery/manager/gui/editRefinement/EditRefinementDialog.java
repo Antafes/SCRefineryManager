@@ -94,11 +94,11 @@ public class EditRefinementDialog extends JDialog
 
         this.cancelButton = new JButton();
         this.cancelButton.setActionCommand("cancel");
-        this.cancelButton.addActionListener(_ -> dispose());
+        this.cancelButton.addActionListener(e -> dispose());
 
         this.saveButton = new JButton();
         this.saveButton.setActionCommand("save");
-        this.saveButton.addActionListener(_ -> SCRefineryManager.getDispatcher().dispatch(new SaveEditRefinementEvent(this, this.refinementKey)));
+        this.saveButton.addActionListener(e -> SCRefineryManager.getDispatcher().dispatch(new SaveEditRefinementEvent(this, this.refinementKey)));
 
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
         buttonsPanel.add(this.saveButton);

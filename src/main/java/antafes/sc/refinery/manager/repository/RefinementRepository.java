@@ -70,7 +70,7 @@ public class RefinementRepository extends BaseRepository<Integer, Refinement>
 
             Marshaller marshaller = JAXBContext.newInstance(RefinementListWrapper.class).createMarshaller();
             RefinementListWrapper list = new RefinementListWrapper();
-            this.refinements.forEach((_, production) -> list.refinements.add(production));
+            this.refinements.forEach((_, refinement) -> list.refinements.add(refinement));
             marshaller.marshal(list, productionsFile);
         } catch (IOException | JAXBException e) {
             throw new RuntimeException(e);
