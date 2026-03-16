@@ -139,34 +139,16 @@ public class BaseWindow extends JFrame
 
     private void openNewRefinementDialog()
     {
-        int x, y, width, height;
-
         NewRefinementDialog dialog = this.applicationContext.getBean(NewRefinementDialog.class, this, true);
-        dialog.setVisible(false);
-
-        width = dialog.getWidth();
-        height = dialog.getHeight();
-        x = this.configuration.getWindowLocation().x + (this.getWidth() / 2 - width / 2);
-        y = this.configuration.getWindowLocation().y + (this.getHeight() / 2 - height / 2);
-
-        dialog.setBounds(x, y, width, height);
+        dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
         this.refreshRefinementsTable();
     }
 
     private void openEditRefinementDialog(Integer key)
     {
-        int x, y, width, height;
-
         EditRefinementDialog dialog = this.applicationContext.getBean(EditRefinementDialog.class, this, true, key);
-        dialog.setVisible(false);
-
-        width = dialog.getWidth();
-        height = dialog.getHeight();
-        x = this.configuration.getWindowLocation().x + (this.getWidth() / 2 - width / 2);
-        y = this.configuration.getWindowLocation().y + (this.getHeight() / 2 - height / 2);
-
-        dialog.setBounds(x, y, width, height);
+        dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
         this.refreshRefinementsTable();
     }
