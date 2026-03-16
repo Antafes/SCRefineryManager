@@ -58,6 +58,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import javax.swing.*;
 import javax.swing.text.AbstractDocument;
 import java.awt.*;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.util.*;
 import java.util.List;
 
@@ -281,6 +283,13 @@ public class EditRefinementPanel extends JPanel
 
         JTextField revenueField = new JTextField(8);
         ((AbstractDocument) revenueField.getDocument()).setDocumentFilter(new IntegerDocumentFilter());
+        revenueField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e)
+            {
+                SwingUtilities.invokeLater(revenueField::selectAll);
+            }
+        });
 
         rowConstraints.gridx++;
         rowConstraints.weightx = 0.5;
