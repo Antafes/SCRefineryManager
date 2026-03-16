@@ -25,6 +25,7 @@ package antafes.sc.refinery.manager.gui;
 import antafes.sc.base.entity.Material;
 import antafes.sc.refinery.manager.entity.Refinement;
 import antafes.sc.refinery.manager.entity.RefinedMaterial;
+import antafes.sc.refinery.manager.gui.element.renderer.MultiLineCellRenderer;
 import antafes.sc.refinery.manager.gui.icon.PenIcon;
 import antafes.sc.refinery.manager.gui.icon.TrashIcon;
 import antafes.sc.refinery.manager.repository.RefinementRepository;
@@ -49,6 +50,8 @@ import java.util.stream.Collectors;
 public class RefinementTable extends JTable
 {
     private static final int ACTIONS_COLUMN_INDEX = 5;
+    private static final int MATERIALS_COLUMN_INDEX = 4;
+    private static final int BASE_ROW_HEIGHT = 32;
 
     private final Component parentComponent;
     private final RefinementRepository refinementRepository;
@@ -68,18 +71,20 @@ public class RefinementTable extends JTable
     public void refreshData()
     {
         this.refinementTableModel.setRows(this.refinementRepository.findAll());
+        resetRowHeights();
     }
 
     public void refreshTexts()
     {
         this.refinementTableModel.fireTableStructureChanged();
         this.configureTable();
+        resetRowHeights();
     }
 
     private void configureTable()
     {
         this.setFillsViewportHeight(true);
-        this.setRowHeight(32);
+        this.setRowHeight(BASE_ROW_HEIGHT);
         this.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         this.getTableHeader().setReorderingAllowed(false);
         this.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
@@ -131,10 +136,11 @@ public class RefinementTable extends JTable
             moneyColumn.setMaxWidth(moneyWidth);
         }
 
-        // Materials should receive most of the remaining width.
-        TableColumn materialsColumn = this.getColumnModel().getColumn(4);
+        // Materials should receive most of the remaining width and wrap when long.
+        TableColumn materialsColumn = this.getColumnModel().getColumn(MATERIALS_COLUMN_INDEX);
         materialsColumn.setMinWidth(200);
         materialsColumn.setPreferredWidth(800);
+        materialsColumn.setCellRenderer(new MultiLineCellRenderer());
 
         TableColumn actionsColumn = this.getColumnModel().getColumn(ACTIONS_COLUMN_INDEX);
         actionsColumn.setMinWidth(110);
@@ -142,6 +148,30 @@ public class RefinementTable extends JTable
         actionsColumn.setPreferredWidth(110);
         actionsColumn.setCellRenderer(new ActionButtonsCellRenderer());
         actionsColumn.setCellEditor(new ActionButtonsCellEditor());
+    }
+
+    private void resetRowHeights()
+    {
+        for (int row = 0; row < getRowCount(); row++) {
+            setRowHeight(row, BASE_ROW_HEIGHT);
+        }
+    }
+
+    @Override
+    public Component prepareRenderer(TableCellRenderer renderer, int row, int column)
+    {
+        Component component = super.prepareRenderer(renderer, row, column);
+
+        if (column == MATERIALS_COLUMN_INDEX && component instanceof JTextArea textArea) {
+            int colWidth = getColumnModel().getColumn(column).getWidth();
+            textArea.setSize(new Dimension(colWidth, Short.MAX_VALUE));
+            int preferredHeight = textArea.getPreferredSize().height + getRowMargin();
+            if (getRowHeight(row) < preferredHeight) {
+                setRowHeight(row, preferredHeight);
+            }
+        }
+
+        return component;
     }
 
     private void deleteRefinement(int key)
