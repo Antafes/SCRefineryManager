@@ -41,6 +41,7 @@ public class English extends antafes.utilities.language.English
         this.getTranslations().put("actions", "Actions");
         this.getTranslations().put("deleteRefinementTitle", "Delete refinement");
         this.getTranslations().put("deleteRefinementConfirm", "Do you really want to delete refinement #%d?");
+        this.getTranslations().put("editRefinement", "Edit refinement #%d");
     }
 
     private void newRefinement()
@@ -54,5 +55,6 @@ public class English extends antafes.utilities.language.English
         this.getTranslations().put("costRequired", "Cost is required.");
         this.getTranslations().put("materialRequired", "Material is required.");
         this.getTranslations().put("amountRequired", "Amount is required.");
+        this.getTranslations().put("revenueRequired", "Revenue is required.");
     }
 }

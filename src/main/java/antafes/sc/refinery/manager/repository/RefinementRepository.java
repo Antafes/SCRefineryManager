@@ -93,6 +93,21 @@ public class RefinementRepository extends BaseRepository<Integer, Refinement>
     }
 
     /**
+     * Update an existing refinement and persist the change.
+     */
+    public synchronized void update(Integer key, Refinement refinement)
+    {
+        if (key == null || refinement == null) return;
+        if (!this.refinements.containsKey(key)) {
+            throw new IllegalArgumentException("Unknown refinement key: " + key);
+        }
+
+        refinement.setKey(key);
+        this.refinements.put(key, refinement);
+        saveData();
+    }
+
+    /**
      * Remove the refinement identified by the given key and persist the updated repository state.
      * The method fails fast when the key does not exist so callers do not silently delete nothing.
      */

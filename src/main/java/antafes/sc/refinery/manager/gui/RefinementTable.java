@@ -369,7 +369,14 @@ public class RefinementTable extends JTable
             this.panel.add(this.editButton);
             this.panel.add(this.deleteButton);
 
-            this.editButton.addActionListener(_ -> stopCellEditing());
+            this.editButton.addActionListener(_ -> {
+                stopCellEditing();
+                if (this.currentRow != null) {
+                    antafes.sc.refinery.manager.SCRefineryManager.getDispatcher().dispatch(
+                        new antafes.sc.refinery.manager.gui.event.EditRefinementEvent(this.currentRow.key)
+                    );
+                }
+            });
             this.deleteButton.addActionListener(_ -> {
                 stopCellEditing();
                 if (this.currentRow != null) {

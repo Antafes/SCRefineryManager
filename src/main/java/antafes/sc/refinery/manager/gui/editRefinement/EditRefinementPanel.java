@@ -20,7 +20,24 @@
  * @license https://www.gnu.org/licenses/lgpl.html LGPLv3
  */
 
-package antafes.sc.refinery.manager.gui.newRefinement;
+/*
+ * This file is part of SCRefineryManager.
+ *
+ * SCRefineryManager is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * SCRefineryManager is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with SCRefineryManager. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package antafes.sc.refinery.manager.gui.editRefinement;
 
 import antafes.sc.base.entity.Material;
 import antafes.sc.base.repository.MaterialRepository;
@@ -29,10 +46,8 @@ import antafes.sc.refinery.manager.SCRefineryManager;
 import antafes.sc.refinery.manager.entity.RefinedMaterial;
 import antafes.sc.refinery.manager.entity.Refinement;
 import antafes.sc.refinery.manager.gui.element.MaterialComboBox;
-import antafes.sc.refinery.manager.gui.event.ResetNewRefinementDialogEvent;
-import antafes.sc.refinery.manager.gui.event.ResetNewRefinementDialogListener;
-import antafes.sc.refinery.manager.gui.event.SaveRefinementEvent;
-import antafes.sc.refinery.manager.gui.event.SaveRefinementListener;
+import antafes.sc.refinery.manager.gui.event.SaveEditRefinementEvent;
+import antafes.sc.refinery.manager.gui.event.SaveEditRefinementListener;
 import antafes.sc.refinery.manager.gui.filter.IntegerDocumentFilter;
 import antafes.sc.refinery.manager.repository.RefinementRepository;
 import antafes.utilities.language.LanguageInterface;
@@ -43,15 +58,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import javax.swing.*;
 import javax.swing.text.AbstractDocument;
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 @org.springframework.stereotype.Component
-public class NewRefinementPanel extends JPanel
+public class EditRefinementPanel extends JPanel
 {
     @Autowired
     private Configuration configuration;
@@ -59,7 +70,9 @@ public class NewRefinementPanel extends JPanel
     private MaterialRepository materialRepository;
     @Autowired
     private RefinementRepository refinementRepository;
+
     private LanguageInterface language;
+
     private JLabel costLabel;
     private JLabel costErrorLabel;
     private JLabel headerMaterialLabel;
@@ -67,9 +80,8 @@ public class NewRefinementPanel extends JPanel
     private JLabel headerQualityLabel;
     private JLabel headerRevenueLabel;
 
-    // Fields requested by user
     private JTextField costField;
-    private JPanel materialsContainer; // holds rows of material selection
+    private JPanel materialsContainer;
     private JButton addMaterialRowButton;
     private final List<MaterialRow> materialRows = new ArrayList<>();
 
@@ -86,11 +98,10 @@ public class NewRefinementPanel extends JPanel
     {
         setLayout(new GridBagLayout());
         GridBagConstraints constraints = new GridBagConstraints();
-        constraints.insets = new Insets(4,4,4,4);
+        constraints.insets = new Insets(4, 4, 4, 4);
         constraints.fill = GridBagConstraints.HORIZONTAL;
         constraints.anchor = GridBagConstraints.NORTHWEST;
 
-        // Cost row: label + input
         this.costLabel = new JLabel();
         this.costField = new JTextField(15);
         if (this.costField.getDocument() instanceof AbstractDocument) {
@@ -117,7 +128,7 @@ public class NewRefinementPanel extends JPanel
 
         JPanel header = new JPanel(new GridBagLayout());
         GridBagConstraints headerConstraints = new GridBagConstraints();
-        headerConstraints.insets = new Insets(2,2,2,2);
+        headerConstraints.insets = new Insets(2, 2, 2, 2);
         headerConstraints.fill = GridBagConstraints.HORIZONTAL;
         this.headerMaterialLabel = new JLabel();
         this.headerAmountLabel = new JLabel();
@@ -162,7 +173,7 @@ public class NewRefinementPanel extends JPanel
         constraints.gridwidth = 1;
         constraints.weighty = 0;
         constraints.fill = GridBagConstraints.HORIZONTAL;
-        
+
         this.addMaterialRowButton = new JButton();
         this.addMaterialRowButton.addActionListener(_ -> addMaterialRow());
 
@@ -171,7 +182,6 @@ public class NewRefinementPanel extends JPanel
         constraints.gridwidth = 2;
         add(this.addMaterialRowButton, constraints);
         constraints.gridwidth = 1;
-        addMaterialRow();
     }
 
     private void setFieldTexts()
@@ -189,29 +199,58 @@ public class NewRefinementPanel extends JPanel
     private void addListeners()
     {
         SCRefineryManager.getDispatcher().addListener(
-            SaveRefinementEvent.class,
-            new SaveRefinementListener(event -> {
+            SaveEditRefinementEvent.class,
+            new SaveEditRefinementListener(event -> {
                 if (!validateInputs()) {
                     return;
                 }
 
-                refinementRepository.add(buildRefinementFromInputs());
+                Refinement refinement = buildRefinementFromInputs();
+                refinement.setKey(event.getKey());
+                refinementRepository.update(event.getKey(), refinement);
 
                 event.getDialog().dispose();
             })
         );
+    }
 
-        SCRefineryManager.getDispatcher().addListener(
-            ResetNewRefinementDialogEvent.class,
-            new ResetNewRefinementDialogListener(_ -> resetWritableFields())
-        );
+    public void loadRefinement(@NonNull Integer key)
+    {
+        Refinement refinement = this.refinementRepository.findOne(key);
+        if (refinement == null) {
+            throw new IllegalArgumentException("Unknown refinement key: " + key);
+        }
+
+        clearValidationErrors();
+        this.costField.setText(String.valueOf(refinement.getCost()));
+
+        for (int i = this.materialsContainer.getComponentCount() - 1; i >= 1; i--) {
+            this.materialsContainer.remove(i);
+        }
+        this.materialRows.clear();
+
+        if (refinement.getMaterials() == null || refinement.getMaterials().isEmpty()) {
+            addMaterialRow();
+        } else {
+            refinement.getMaterials().values().forEach(this::addMaterialRow);
+        }
+
+        this.materialsContainer.revalidate();
+        this.materialsContainer.repaint();
+        revalidate();
+        repaint();
     }
 
     private void addMaterialRow()
     {
+        addMaterialRow((RefinedMaterial) null);
+    }
+
+    private void addMaterialRow(RefinedMaterial initial)
+    {
         JPanel row = new JPanel(new GridBagLayout());
         GridBagConstraints rowConstraints = new GridBagConstraints();
-        rowConstraints.insets = new Insets(2,2,2,2);
+        rowConstraints.insets = new Insets(2, 2, 2, 2);
         rowConstraints.fill = GridBagConstraints.HORIZONTAL;
         MaterialComboBox materialCombo = getMaterialComboBox();
 
@@ -236,7 +275,6 @@ public class NewRefinementPanel extends JPanel
 
         JTextField revenueField = new JTextField(8);
         ((AbstractDocument) revenueField.getDocument()).setDocumentFilter(new IntegerDocumentFilter());
-        revenueField.setText("0");
 
         rowConstraints.gridx++;
         rowConstraints.weightx = 0.5;
@@ -268,14 +306,35 @@ public class NewRefinementPanel extends JPanel
         row.add(remove, rowConstraints);
 
         this.materialsContainer.add(row);
-        this.materialsContainer.revalidate();
-        this.materialsContainer.repaint();
 
         materialCombo.refresh();
+
+        if (initial != null) {
+            selectMaterial(materialCombo, initial.getBaseMaterial());
+            amountField.setText(String.valueOf(initial.getAmount()));
+            qualityField.setText(String.valueOf(initial.getQuality()));
+            revenueField.setText(String.valueOf(initial.getSellingPrice()));
+        }
+
         updateRemoveButtonsState();
     }
 
-    private @NonNull JButton createRemoveButton(JPanel row, MaterialRow materialRow)
+    private void selectMaterial(MaterialComboBox comboBox, Material material)
+    {
+        if (material == null) return;
+
+        for (int i = 0; i < comboBox.getItemCount(); i++) {
+            Object item = comboBox.getItemAt(i);
+            if (item instanceof Material m && Objects.equals(m.getKey(), material.getKey())) {
+                comboBox.setSelectedIndex(i);
+                return;
+            }
+        }
+
+        comboBox.setSelectedItem(material);
+    }
+
+    private JButton createRemoveButton(JPanel row, MaterialRow materialRow)
     {
         JButton remove = new JButton("-");
         remove.setActionCommand("remove");
@@ -291,7 +350,7 @@ public class NewRefinementPanel extends JPanel
                 }
                 materialRow.amountField().setText("");
                 materialRow.qualityField().setText("");
-                materialRow.revenueField().setText("0");
+                materialRow.revenueField().setText("");
                 hideError(materialRow.materialErrorLabel());
                 hideError(materialRow.amountErrorLabel());
                 hideError(materialRow.revenueErrorLabel());
@@ -301,12 +360,13 @@ public class NewRefinementPanel extends JPanel
         return remove;
     }
 
-    private @NonNull MaterialComboBox getMaterialComboBox()
+    private MaterialComboBox getMaterialComboBox()
     {
         return new MaterialComboBox(this.materialRepository);
     }
 
-    private void updateRemoveButtonsState() {
+    private void updateRemoveButtonsState()
+    {
         int count = this.materialRows.size();
         Arrays.stream(this.materialsContainer.getComponents())
             .filter(rowComp -> rowComp instanceof JPanel)
@@ -318,7 +378,8 @@ public class NewRefinementPanel extends JPanel
             .forEachOrdered(btn -> btn.setEnabled(count > 1));
     }
 
-    private Refinement buildRefinementFromInputs() {
+    private Refinement buildRefinementFromInputs()
+    {
         Refinement refinement = new Refinement();
         Integer cost = parseInteger(this.costField.getText());
         if (cost != null) {
@@ -442,28 +503,6 @@ public class NewRefinementPanel extends JPanel
     {
         Object selectedItem = materialRow.materialField().getSelectedItem();
         return selectedItem instanceof Material material ? material : null;
-    }
-
-    public void resetWritableFields()
-    {
-        if (this.costField == null || this.materialsContainer == null) {
-            return;
-        }
-
-        clearValidationErrors();
-        this.costField.setText("");
-
-        // Remove all material rows (keep the header row at index 0) and rebuild a single empty row.
-        for (int i = this.materialsContainer.getComponentCount() - 1; i >= 1; i--) {
-            this.materialsContainer.remove(i);
-        }
-        this.materialRows.clear();
-        addMaterialRow();
-
-        this.materialsContainer.revalidate();
-        this.materialsContainer.repaint();
-        revalidate();
-        repaint();
     }
 
     private record MaterialRow(

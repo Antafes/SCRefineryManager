@@ -24,6 +24,7 @@ package antafes.sc.refinery.manager.gui;
 
 import antafes.sc.refinery.manager.Configuration;
 import antafes.sc.refinery.manager.SCRefineryManager;
+import antafes.sc.refinery.manager.gui.editRefinement.EditRefinementDialog;
 import antafes.sc.refinery.manager.gui.event.*;
 import antafes.sc.refinery.manager.gui.newRefinement.NewRefinementDialog;
 import antafes.sc.refinery.manager.repository.RefinementRepository;
@@ -130,6 +131,10 @@ public class BaseWindow extends JFrame
             NewRefinementEvent.class,
             new NewRefinementListener(newRefinementEvent -> this.openNewRefinementDialog())
         );
+        SCRefineryManager.getDispatcher().addListener(
+            EditRefinementEvent.class,
+            new EditRefinementListener(event -> this.openEditRefinementDialog(event.getKey()))
+        );
     }
 
     private void openNewRefinementDialog()
@@ -137,6 +142,23 @@ public class BaseWindow extends JFrame
         int x, y, width, height;
 
         NewRefinementDialog dialog = this.applicationContext.getBean(NewRefinementDialog.class, this, true);
+        dialog.setVisible(false);
+
+        width = dialog.getWidth();
+        height = dialog.getHeight();
+        x = this.configuration.getWindowLocation().x + (this.getWidth() / 2 - width / 2);
+        y = this.configuration.getWindowLocation().y + (this.getHeight() / 2 - height / 2);
+
+        dialog.setBounds(x, y, width, height);
+        dialog.setVisible(true);
+        this.refreshRefinementsTable();
+    }
+
+    private void openEditRefinementDialog(Integer key)
+    {
+        int x, y, width, height;
+
+        EditRefinementDialog dialog = this.applicationContext.getBean(EditRefinementDialog.class, this, true, key);
         dialog.setVisible(false);
 
         width = dialog.getWidth();
