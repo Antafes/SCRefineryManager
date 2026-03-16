@@ -46,6 +46,8 @@ import antafes.sc.refinery.manager.SCRefineryManager;
 import antafes.sc.refinery.manager.entity.RefinedMaterial;
 import antafes.sc.refinery.manager.entity.Refinement;
 import antafes.sc.refinery.manager.gui.element.MaterialComboBox;
+import antafes.sc.refinery.manager.gui.event.LanguageChangedEvent;
+import antafes.sc.refinery.manager.gui.event.LanguageChangedListener;
 import antafes.sc.refinery.manager.gui.event.SaveEditRefinementEvent;
 import antafes.sc.refinery.manager.gui.event.SaveEditRefinementListener;
 import antafes.sc.refinery.manager.gui.filter.IntegerDocumentFilter;
@@ -219,6 +221,13 @@ public class EditRefinementPanel extends JPanel
 
                 event.getDialog().dispose();
             })
+        );
+        SCRefineryManager.getDispatcher().addListener(
+            LanguageChangedEvent.class,
+            new LanguageChangedListener(event -> SwingUtilities.invokeLater(() -> {
+                this.language = event.getLanguage();
+                this.setFieldTexts();
+            }))
         );
     }
 

@@ -20,42 +20,23 @@
  * @license https://www.gnu.org/licenses/lgpl.html LGPLv3
  */
 
-package antafes.sc.refinery.manager.util;
+package antafes.sc.refinery.manager.gui.event;
 
 import antafes.sc.refinery.manager.Configuration;
-import lombok.experimental.UtilityClass;
+import antafes.utilities.language.LanguageInterface;
+import lombok.Getter;
+import scripts.laniax.framework.event_dispatcher.Event;
 
-import java.text.NumberFormat;
-import java.util.Locale;
-
-@UtilityClass
-public class Currency
+@Getter
+public class LanguageChangedEvent extends Event
 {
-    /**
-     * Backward-compatible default formatting.
-     * Uses the app language defaults (not the user's OS locale).
-     */
-    public String format(int amount)
+    private final LanguageInterface language;
+    private final Configuration.Language appLanguage;
+
+    public LanguageChangedEvent(LanguageInterface language, Configuration.Language appLanguage)
     {
-        return format(amount, Configuration.Language.ENGLISH);
+        this.language = language;
+        this.appLanguage = appLanguage;
     }
 
-    public String format(int amount, Configuration.Language language)
-    {
-        NumberFormat format = NumberFormat.getIntegerInstance(localeForLanguage(language));
-        format.setGroupingUsed(true);
-        return format.format(amount) + " aUEC";
-    }
-
-    private Locale localeForLanguage(Configuration.Language language)
-    {
-        if (language == null) {
-            language = Configuration.Language.ENGLISH;
-        }
-
-        return switch (language) {
-            case ENGLISH -> Locale.US;
-            case GERMAN -> Locale.GERMANY;
-        };
-    }
 }

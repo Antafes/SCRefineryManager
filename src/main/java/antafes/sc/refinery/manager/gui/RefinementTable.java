@@ -23,6 +23,7 @@
 package antafes.sc.refinery.manager.gui;
 
 import antafes.sc.base.entity.Material;
+import antafes.sc.refinery.manager.Configuration;
 import antafes.sc.refinery.manager.entity.RefinedMaterial;
 import antafes.sc.refinery.manager.entity.Refinement;
 import antafes.sc.refinery.manager.gui.element.renderer.MultiLineCellRenderer;
@@ -34,6 +35,7 @@ import antafes.sc.refinery.manager.util.Cargo;
 import antafes.sc.refinery.manager.util.Currency;
 import antafes.sc.refinery.manager.util.Name;
 import antafes.utilities.language.LanguageInterface;
+import org.jspecify.annotations.NonNull;
 
 import javax.swing.*;
 import javax.swing.table.*;
@@ -56,17 +58,44 @@ public class RefinementTable extends JTable
 
     private final Component parentComponent;
     private final RefinementRepository refinementRepository;
-    private final LanguageInterface language;
+    private LanguageInterface language;
+    private Configuration.Language appLanguage;
     private final RefinementTableModel refinementTableModel;
 
-    public RefinementTable(Component parentComponent, RefinementRepository refinementRepository, LanguageInterface language)
+    public RefinementTable(Component parentComponent,
+                           RefinementRepository refinementRepository,
+                           LanguageInterface language,
+                           Configuration.Language appLanguage)
     {
         this.parentComponent = parentComponent;
         this.refinementRepository = refinementRepository;
         this.language = language;
+        this.appLanguage = appLanguage;
         this.refinementTableModel = new RefinementTableModel();
         this.setModel(this.refinementTableModel);
         this.configureTable();
+        this.addListener();
+    }
+
+    private void addListener()
+    {
+        antafes.sc.refinery.manager.SCRefineryManager.getDispatcher().addListener(
+            antafes.sc.refinery.manager.gui.event.LanguageChangedEvent.class,
+            new antafes.sc.refinery.manager.gui.event.LanguageChangedListener(
+                event -> SwingUtilities.invokeLater(() -> this.updateLanguage(event.getLanguage(), event.getAppLanguage()))
+            )
+        );
+    }
+
+    private void updateLanguage(LanguageInterface language, Configuration.Language appLanguage)
+    {
+        if (language != null) {
+            this.language = language;
+        }
+        if (appLanguage != null) {
+            this.appLanguage = appLanguage;
+        }
+        this.refreshTexts();
     }
 
     public void refreshData()
@@ -109,8 +138,8 @@ public class RefinementTable extends JTable
             headerFm.stringWidth(this.getColumnName(0))
         ) + padding;
 
-        String moneySample = Currency.format(9_999_999);
-        String moneySampleNegative = Currency.format(-9_999_999);
+        String moneySample = Currency.format(9_999_999, this.appLanguage);
+        String moneySampleNegative = Currency.format(-9_999_999, this.appLanguage);
         int moneyContentWidth = Math.max(
             cellFm.stringWidth(moneySample),
             cellFm.stringWidth(moneySampleNegative)
@@ -175,12 +204,8 @@ public class RefinementTable extends JTable
     }
 
     @Override
-    public String getToolTipText(MouseEvent event)
+    public String getToolTipText(@NonNull MouseEvent event)
     {
-        if (event == null) {
-            return super.getToolTipText();
-        }
-
         int viewRow = rowAtPoint(event.getPoint());
         int viewColumn = columnAtPoint(event.getPoint());
 
@@ -286,9 +311,9 @@ public class RefinementTable extends JTable
             RefinementTableRow row = this.rows.get(rowIndex);
             return switch (columnIndex) {
                 case 0 -> row.key;
-                case 1 -> Currency.format(row.cost);
-                case 2 -> Currency.format(row.revenue);
-                case 3 -> Currency.format(row.profit);
+                case 1 -> Currency.format(row.cost, RefinementTable.this.appLanguage);
+                case 2 -> Currency.format(row.revenue, RefinementTable.this.appLanguage);
+                case 3 -> Currency.format(row.profit, RefinementTable.this.appLanguage);
                 case 4 -> row.materials;
                 case 5 -> row;
                 default -> null;

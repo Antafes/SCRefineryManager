@@ -36,11 +36,7 @@ import org.springframework.context.ApplicationContext;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.InputEvent;
-import java.awt.event.KeyEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import java.awt.event.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -61,6 +57,10 @@ public class BaseWindow extends JFrame
     private JMenu fileMenu;
     private JMenuItem closeMenuItem;
     private JMenuItem newMenuItem;
+
+    private JMenu languageMenu;
+    private JRadioButtonMenuItem languageEnglishItem;
+    private JRadioButtonMenuItem languageGermanItem;
 
     @PostConstruct
     private void initAfterInjection()
@@ -89,7 +89,12 @@ public class BaseWindow extends JFrame
         this.panel = new JPanel(new BorderLayout());
         this.refinementsBorder = BorderFactory.createTitledBorder("");
         this.panel.setBorder(this.refinementsBorder);
-        this.refinementsTable = new RefinementTable(this, this.refinementRepository, this.language);
+        this.refinementsTable = new RefinementTable(
+            this,
+            this.refinementRepository,
+            this.language,
+            (Configuration.Language) this.configuration.getLanguage()
+        );
 
         JScrollPane refinementsScrollPane = new JScrollPane(this.refinementsTable);
         this.panel.add(refinementsScrollPane, BorderLayout.CENTER);
@@ -115,9 +120,36 @@ public class BaseWindow extends JFrame
         this.closeMenuItem = new JMenuItem();
         this.newMenuItem = new JMenuItem();
 
+        this.languageMenu = new JMenu();
+        this.languageEnglishItem = new JRadioButtonMenuItem();
+        this.languageGermanItem = new JRadioButtonMenuItem();
+
         this.fileMenu.add(this.newMenuItem);
         this.fileMenu.add(this.closeMenuItem);
         menuBar.add(this.fileMenu);
+
+        ButtonGroup languageGroup = new ButtonGroup();
+        languageGroup.add(this.languageEnglishItem);
+        languageGroup.add(this.languageGermanItem);
+
+        this.languageEnglishItem.setIcon(Configuration.Language.ENGLISH.getIcon());
+        this.languageGermanItem.setIcon(Configuration.Language.GERMAN.getIcon());
+
+        this.languageMenu.add(this.languageEnglishItem);
+        this.languageMenu.add(this.languageGermanItem);
+
+        menuBar.add(Box.createHorizontalGlue());
+        menuBar.add(this.languageMenu);
+
+        Configuration.Language currentLanguage = (Configuration.Language) this.configuration.getLanguage();
+        this.languageMenu.setIcon(currentLanguage.getIcon());
+        this.languageMenu.setText("");
+
+        this.languageEnglishItem.setSelected(currentLanguage == Configuration.Language.ENGLISH);
+        this.languageGermanItem.setSelected(currentLanguage == Configuration.Language.GERMAN);
+
+        this.languageEnglishItem.addActionListener(e -> this.switchLanguage(Configuration.Language.ENGLISH));
+        this.languageGermanItem.addActionListener(e -> this.switchLanguage(Configuration.Language.GERMAN));
 
         this.newMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, InputEvent.CTRL_DOWN_MASK));
         this.newMenuItem.addActionListener(e -> SCRefineryManager.getDispatcher().dispatch(new NewRefinementEvent()));
@@ -199,13 +231,23 @@ public class BaseWindow extends JFrame
         this.setTitle(this.language.translate("title"));
         this.refinementsBorder.setTitle(this.language.translate("refinements"));
         this.panel.repaint();
+
         this.fileMenu.setText(this.language.translate("file"));
         this.fileMenu.setMnemonic(this.language.translate("fileMnemonic").charAt(0));
         this.newMenuItem.setText(this.language.translate("new"));
         this.newMenuItem.setMnemonic(this.language.translate("newMnemonic").charAt(0));
         this.closeMenuItem.setText(this.language.translate("quit"));
         this.closeMenuItem.setMnemonic(this.language.translate("quitMnemonic").charAt(0));
-        this.refinementsTable.refreshTexts();
+
+        Configuration.Language currentLanguage = (Configuration.Language) this.configuration.getLanguage();
+        this.languageMenu.setIcon(currentLanguage.getIcon());
+        this.languageMenu.setText("");
+
+        this.languageEnglishItem.setText(this.language.translate("english"));
+        this.languageGermanItem.setText(this.language.translate("german"));
+
+        this.languageEnglishItem.setSelected(currentLanguage == Configuration.Language.ENGLISH);
+        this.languageGermanItem.setSelected(currentLanguage == Configuration.Language.GERMAN);
     }
 
     private void init()
@@ -227,9 +269,24 @@ public class BaseWindow extends JFrame
         this.setExtendedState(this.configuration.getExtendedState());
     }
 
+    private void switchLanguage(Configuration.Language language)
+    {
+        if (language == null) {
+            return;
+        }
+
+        this.configuration.setLanguage(language);
+        this.configuration.saveProperties();
+
+        this.language = this.configuration.getLanguageObject();
+
+        SCRefineryManager.getDispatcher().dispatch(new LanguageChangedEvent(this.language, language));
+
+        this.setFieldTexts();
+    }
+
     public void refreshRefinementsTable()
     {
         this.refinementsTable.refreshData();
     }
-
 }

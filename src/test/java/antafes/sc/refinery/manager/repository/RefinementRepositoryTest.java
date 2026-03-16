@@ -27,6 +27,7 @@ import antafes.sc.base.repository.MaterialRepository;
 import antafes.sc.refinery.manager.Configuration;
 import antafes.sc.refinery.manager.entity.RefinedMaterial;
 import antafes.sc.refinery.manager.entity.Refinement;
+import antafes.sc.refinery.manager.util.Currency;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -44,6 +45,7 @@ import java.nio.file.Path;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -70,6 +72,23 @@ class RefinementRepositoryTest
     {
         when(configuration.getBasePath()).thenReturn(this.tempDir.toString() + File.separator);
         this.refinementRepository.findAll().clear();
+    }
+
+    @Test
+    void currencyFormattingDependsOnAppLanguageNotUserLocale()
+    {
+        Locale previous = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.GERMANY);
+
+            assertThat(Currency.format(9_999_999, Configuration.Language.ENGLISH))
+                .isEqualTo("9,999,999 aUEC");
+
+            assertThat(Currency.format(9_999_999))
+                .isEqualTo("9,999,999 aUEC");
+        } finally {
+            Locale.setDefault(previous);
+        }
     }
 
     @Test

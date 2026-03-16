@@ -23,6 +23,7 @@
 package antafes.sc.refinery.manager;
 
 import antafes.sc.refinery.manager.language.English;
+import antafes.sc.refinery.manager.language.German;
 import antafes.sc.refinery.manager.util.IntegerUtil;
 import antafes.utilities.BaseConfiguration;
 import antafes.utilities.Utilities;
@@ -64,6 +65,17 @@ public class Configuration extends BaseConfiguration
         }
     }
 
+    public void setLanguage(Language language)
+    {
+        if (language == null) {
+            return;
+        }
+
+        // Ensure the stored value matches getLanguage()'s Language.valueOf(...)
+        super.setLanguage(language);
+        this.getProperties().setProperty("language", language.name());
+    }
+
     public static String getDataPath()
     {
         return DATA_PATH;
@@ -89,7 +101,8 @@ public class Configuration extends BaseConfiguration
     @Getter
     public enum Language implements LanguageInterface
     {
-        ENGLISH(English.class.getName(), "English", "images/english.png");
+        ENGLISH(English.class.getName(), "English", "images/english.png"),
+        GERMAN (German.class.getName(), "German", "images/german.png");
 
         private final String languageString;
         private final String name;
