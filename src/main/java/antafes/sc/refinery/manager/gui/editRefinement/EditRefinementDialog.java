@@ -45,7 +45,6 @@ public class EditRefinementDialog extends JDialog
     private final Integer refinementKey;
 
     private LanguageInterface language;
-    private EditRefinementPanel panel;
 
     private JButton cancelButton;
     private JButton saveButton;
@@ -70,8 +69,8 @@ public class EditRefinementDialog extends JDialog
         setResizable(false);
         SCRefineryManager.getDispatcher().dispatch(new RegisterEscapeCloseOperationEvent(this));
 
-        this.panel = this.applicationContext.getBean(EditRefinementPanel.class);
-        this.panel.loadRefinement(this.refinementKey);
+        EditRefinementPanel panel = this.applicationContext.getBean(EditRefinementPanel.class);
+        panel.loadRefinement(this.refinementKey);
 
         GridBagLayout layout = new GridBagLayout();
         this.setLayout(layout);
@@ -87,7 +86,7 @@ public class EditRefinementDialog extends JDialog
         constraints.fill = GridBagConstraints.BOTH;
         constraints.anchor = GridBagConstraints.NORTHWEST;
 
-        this.add(this.panel, constraints);
+        this.add(panel, constraints);
 
         constraints.gridy++;
         constraints.weighty = 0;

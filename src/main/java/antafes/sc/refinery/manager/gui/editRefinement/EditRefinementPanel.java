@@ -243,7 +243,7 @@ public class EditRefinementPanel extends JPanel
 
     private void addMaterialRow()
     {
-        addMaterialRow((RefinedMaterial) null);
+        addMaterialRow(null);
     }
 
     private void addMaterialRow(RefinedMaterial initial)

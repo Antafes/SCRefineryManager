@@ -47,7 +47,6 @@ public class NewRefinementDialog extends JDialog
     @Autowired
     private Configuration configuration;
     private LanguageInterface language;
-    private NewRefinementPanel panel;
 
     // Dialog buttons
     private JButton cancelButton;
@@ -72,7 +71,7 @@ public class NewRefinementDialog extends JDialog
         setResizable(false);
         SCRefineryManager.getDispatcher().dispatch(new RegisterEscapeCloseOperationEvent(this));
 
-        this.panel = this.applicationContext.getBean(NewRefinementPanel.class);
+        NewRefinementPanel panel = this.applicationContext.getBean(NewRefinementPanel.class);
         GridBagLayout layout = new GridBagLayout();
         this.setLayout(layout);
 
@@ -87,7 +86,7 @@ public class NewRefinementDialog extends JDialog
         constraints.fill = GridBagConstraints.BOTH;
         constraints.anchor = GridBagConstraints.NORTHWEST;
 
-        this.add(this.panel, constraints);
+        this.add(panel, constraints);
 
         constraints.gridy++;
         constraints.weighty = 0;

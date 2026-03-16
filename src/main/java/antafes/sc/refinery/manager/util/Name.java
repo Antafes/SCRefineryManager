@@ -22,15 +22,10 @@
 
 package antafes.sc.refinery.manager.util;
 
-import antafes.sc.base.Configuration;
 import antafes.sc.base.entity.Material;
-import org.springframework.beans.factory.annotation.Autowired;
 
 public class Name
 {
-    @Autowired
-    private Configuration configuration;
-
     public static String fetchTranslatedName(Material material) {
         return material.getName().getEnglish();
     }

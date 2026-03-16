@@ -22,8 +22,6 @@
 
 package antafes.sc.refinery.manager.repository.adapter;
 
-import antafes.sc.base.entity.Material;
-import antafes.sc.base.repository.MaterialRepository;
 import antafes.sc.refinery.manager.entity.RefinedMaterial;
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlRootElement;
@@ -37,7 +35,7 @@ import java.util.UUID;
 public class RefinedMaterialsAdapter extends XmlAdapter<RefinedMaterialsAdapter.MaterialsWrapper, Map<UUID, RefinedMaterial>>
 {
     @Override
-    public MaterialsWrapper marshal(Map<UUID, RefinedMaterial> materials) throws Exception
+    public MaterialsWrapper marshal(Map<UUID, RefinedMaterial> materials)
     {
         MaterialsWrapper wrapper = new MaterialsWrapper();
         wrapper.materials.addAll(materials.values());
@@ -46,7 +44,7 @@ public class RefinedMaterialsAdapter extends XmlAdapter<RefinedMaterialsAdapter.
     }
 
     @Override
-    public Map<UUID, RefinedMaterial> unmarshal(MaterialsWrapper wrapper) throws Exception
+    public Map<UUID, RefinedMaterial> unmarshal(MaterialsWrapper wrapper)
     {
         Map<UUID, RefinedMaterial> map = new java.util.HashMap<>();
 

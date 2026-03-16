@@ -23,11 +23,10 @@
 package antafes.sc.refinery.manager;
 
 import antafes.eventDispatcher.Application;
-import antafes.sc.base.repository.MaterialRepository;
 import antafes.sc.refinery.manager.gui.BaseWindow;
 import antafes.sc.refinery.manager.gui.Splash;
-import antafes.sc.refinery.manager.repository.RefinementRepository;
 import antafes.utilities.Utilities;
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -56,7 +55,7 @@ public class SCRefineryManager extends Application implements CommandLineRunner
     }
 
     @Override
-    public void run(String ... args) throws Exception
+    public void run(String @NonNull ... args)
     {
         this.openBaseWindow();
     }

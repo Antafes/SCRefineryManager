@@ -37,6 +37,7 @@ public class Timer extends Thread
     public void run() {
         while (counter <= showFor) {
             try {
+                //noinspection BusyWait
                 Thread.sleep(1);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);

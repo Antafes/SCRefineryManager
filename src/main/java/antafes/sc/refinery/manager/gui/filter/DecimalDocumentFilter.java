@@ -42,11 +42,7 @@ public class DecimalDocumentFilter extends DocumentFilter {
         StringBuilder sb = new StringBuilder(current);
         sb.replace(offset, offset + length, text == null ? "" : text);
         if (DECIMAL.matcher(sb.toString()).matches()) {
-            try {
-                super.replace(fb, offset, length, text, attrs);
-            } catch (BadLocationException e) {
-                throw e;
-            }
+            super.replace(fb, offset, length, text, attrs);
         } else {
             Toolkit.getDefaultToolkit().beep();
         }

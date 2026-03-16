@@ -23,8 +23,8 @@
 package antafes.sc.refinery.manager.gui;
 
 import antafes.sc.base.entity.Material;
-import antafes.sc.refinery.manager.entity.Refinement;
 import antafes.sc.refinery.manager.entity.RefinedMaterial;
+import antafes.sc.refinery.manager.entity.Refinement;
 import antafes.sc.refinery.manager.gui.element.renderer.MultiLineCellRenderer;
 import antafes.sc.refinery.manager.gui.element.renderer.PaddedDefaultTableCellRenderer;
 import antafes.sc.refinery.manager.gui.icon.PenIcon;
@@ -36,17 +36,10 @@ import antafes.sc.refinery.manager.util.Name;
 import antafes.utilities.language.LanguageInterface;
 
 import javax.swing.*;
-import javax.swing.border.Border;
-import javax.swing.table.AbstractTableModel;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.TableCellEditor;
-import javax.swing.table.TableCellRenderer;
-import javax.swing.table.TableColumn;
+import javax.swing.table.*;
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 public class RefinementTable extends JTable
@@ -54,8 +47,6 @@ public class RefinementTable extends JTable
     private static final int ACTIONS_COLUMN_INDEX = 5;
     private static final int MATERIALS_COLUMN_INDEX = 4;
     private static final int BASE_ROW_HEIGHT = 32;
-
-    private static final Border INNER_LR_PADDING = BorderFactory.createEmptyBorder(0, 2, 0, 2);
 
     private final Component parentComponent;
     private final RefinementRepository refinementRepository;
@@ -204,23 +195,7 @@ public class RefinementTable extends JTable
         return button;
     }
 
-    private static class RefinementTableRow
-    {
-        private final int key;
-        private final int cost;
-        private final int revenue;
-        private final int profit;
-        private final String materials;
-
-        private RefinementTableRow(int key, int cost, int revenue, int profit, String materials)
-        {
-            this.key = key;
-            this.cost = cost;
-            this.revenue = revenue;
-            this.profit = profit;
-            this.materials = materials;
-        }
-    }
+    private record RefinementTableRow(int key, int cost, int revenue, int profit, String materials) {}
 
     private class RefinementTableModel extends AbstractTableModel
     {
@@ -310,38 +285,63 @@ public class RefinementTable extends JTable
                 return "";
             }
 
-            return refinement.getMaterials().values().stream()
-                .sorted(Comparator.comparing(this::getMaterialDisplayName, String.CASE_INSENSITIVE_ORDER))
-                .map(material -> "%s (%s)".formatted(
-                    getMaterialDisplayName(material),
-                    Cargo.formatFromCSCU(material.getAmount())
+            Map<Object, MaterialAggregate> combined = new HashMap<>();
+            refinement.getMaterials().values().forEach(refinedMaterial -> {
+                Material displayMaterial = getDisplayMaterial(refinedMaterial);
+                Object materialKey = displayMaterial != null ? displayMaterial.getKey() : null;
+                MaterialAggregate aggregate = combined.computeIfAbsent(
+                    materialKey,
+                    _ -> new MaterialAggregate(displayMaterial, 0)
+                );
+                aggregate.amountCSCU += refinedMaterial.getAmount();
+            });
+
+            return combined.values().stream()
+                .sorted(Comparator.comparing(a -> getMaterialDisplayName(a.material), String.CASE_INSENSITIVE_ORDER))
+                .map(a -> "%s (%s)".formatted(
+                    getMaterialDisplayName(a.material),
+                    Cargo.formatFromCSCU(a.amountCSCU)
                 ))
                 .collect(Collectors.joining(", "));
         }
 
-        private String getMaterialDisplayName(RefinedMaterial refinedMaterial)
+        private Material getDisplayMaterial(RefinedMaterial refinedMaterial)
         {
+            if (refinedMaterial == null) return null;
             Material displayMaterial = refinedMaterial.getBaseMaterial();
             if (displayMaterial.getReferences() != null) {
                 displayMaterial = displayMaterial.getReferences();
             }
+            return displayMaterial;
+        }
 
-            return Name.fetchTranslatedName(displayMaterial);
+        private String getMaterialDisplayName(Material displayMaterial)
+        {
+            return displayMaterial == null ? "" : Name.fetchTranslatedName(displayMaterial);
+        }
+
+        private static class MaterialAggregate
+        {
+            private final Material material;
+            private int amountCSCU;
+
+            private MaterialAggregate(Material material, int amountCSCU)
+            {
+                this.material = material;
+                this.amountCSCU = amountCSCU;
+            }
         }
     }
 
-    private class ActionButtonsCellRenderer extends JPanel implements TableCellRenderer
+    private static class ActionButtonsCellRenderer extends JPanel implements TableCellRenderer
     {
-        private final JButton editButton = createActionButton(new PenIcon(), "edit");
-        private final JButton deleteButton = createActionButton(new TrashIcon(), "delete");
-
         private ActionButtonsCellRenderer()
         {
             super(new FlowLayout(FlowLayout.CENTER, 4, 2));
             setOpaque(true);
             setBorder(null);
-            add(this.editButton);
-            add(this.deleteButton);
+            add(createActionButton(new PenIcon(), "edit"));
+            add(createActionButton(new TrashIcon(), "delete"));
         }
 
         @Override
@@ -360,16 +360,16 @@ public class RefinementTable extends JTable
     private class ActionButtonsCellEditor extends AbstractCellEditor implements TableCellEditor
     {
         private final JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 2));
-        private final JButton editButton = createActionButton(new PenIcon(), "edit");
-        private final JButton deleteButton = createActionButton(new TrashIcon(), "delete");
         private RefinementTableRow currentRow;
 
         private ActionButtonsCellEditor()
         {
-            this.panel.add(this.editButton);
-            this.panel.add(this.deleteButton);
+            JButton editButton = createActionButton(new PenIcon(), "edit");
+            JButton deleteButton = createActionButton(new TrashIcon(), "delete");
+            this.panel.add(editButton);
+            this.panel.add(deleteButton);
 
-            this.editButton.addActionListener(_ -> {
+            editButton.addActionListener(_ -> {
                 stopCellEditing();
                 if (this.currentRow != null) {
                     antafes.sc.refinery.manager.SCRefineryManager.getDispatcher().dispatch(
@@ -377,7 +377,7 @@ public class RefinementTable extends JTable
                     );
                 }
             });
-            this.deleteButton.addActionListener(_ -> {
+            deleteButton.addActionListener(_ -> {
                 stopCellEditing();
                 if (this.currentRow != null) {
                     RefinementTable.this.deleteRefinement(this.currentRow.key);

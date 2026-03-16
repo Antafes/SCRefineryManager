@@ -131,7 +131,7 @@ public class RefinementRepository extends BaseRepository<Integer, Refinement>
             RefinementListWrapper wrapper = (RefinementListWrapper) unmarshaller.unmarshal(new FileInputStream(refinementsFile));
             wrapper.refinements.forEach(refinement -> {
                 refinement.getMaterials()
-                    .forEach((materialKey, refinedMaterial) -> refinedMaterial.setBaseMaterial(this.materialRepository.findOne(refinedMaterial.getBaseMaterial().getKey())));
+                    .forEach((_, refinedMaterial) -> refinedMaterial.setBaseMaterial(this.materialRepository.findOne(refinedMaterial.getBaseMaterial().getKey())));
                 this.refinements.put(refinement.getKey(), refinement);
             });
         } catch (JAXBException | IOException e) {
@@ -143,10 +143,13 @@ public class RefinementRepository extends BaseRepository<Integer, Refinement>
     {
         if (!refinementsFile.exists()) {
             if (!refinementsFile.getParentFile().exists()) {
+                //noinspection ResultOfMethodCallIgnored
                 refinementsFile.getParentFile().mkdirs();
             }
 
+            //noinspection ResultOfMethodCallIgnored
             refinementsFile.createNewFile();
+            //noinspection ResultOfMethodCallIgnored
             refinementsFile.setWritable(true);
             List<String> lines = Arrays.asList(
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
