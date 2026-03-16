@@ -24,6 +24,7 @@ package antafes.sc.refinery.manager.gui.element;
 
 import antafes.sc.base.entity.Material;
 import antafes.sc.base.repository.MaterialRepository;
+import antafes.sc.refinery.manager.util.Name;
 
 import javax.swing.*;
 import java.awt.*;
@@ -44,7 +45,7 @@ public class MaterialComboBox extends JComboBox<Material> {
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
                 JLabel lbl = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
                 if (value instanceof Material) {
-                    lbl.setText(((Material) value).getName().getEnglish());
+                    lbl.setText(Name.fetchTranslatedName((Material) value));
                 } else {
                     lbl.setText(value == null ? "" : value.toString());
                 }

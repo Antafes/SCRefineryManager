@@ -22,10 +22,14 @@
 
 package antafes.sc.refinery.manager.gui;
 
+import antafes.sc.base.entity.Material;
 import antafes.sc.refinery.manager.entity.Refinement;
+import antafes.sc.refinery.manager.entity.RefinedMaterial;
 import antafes.sc.refinery.manager.gui.icon.PenIcon;
 import antafes.sc.refinery.manager.gui.icon.TrashIcon;
 import antafes.sc.refinery.manager.repository.RefinementRepository;
+import antafes.sc.refinery.manager.util.Cargo;
+import antafes.sc.refinery.manager.util.Name;
 import antafes.utilities.language.LanguageInterface;
 
 import javax.swing.*;
@@ -39,10 +43,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class RefinementTable extends JTable
 {
-    private static final int ACTIONS_COLUMN_INDEX = 4;
+    private static final int ACTIONS_COLUMN_INDEX = 5;
 
     private final Component parentComponent;
     private final RefinementRepository refinementRepository;
@@ -125,13 +130,15 @@ public class RefinementTable extends JTable
         private final int cost;
         private final int revenue;
         private final int profit;
+        private final String materials;
 
-        private RefinementTableRow(int key, int cost, int revenue, int profit)
+        private RefinementTableRow(int key, int cost, int revenue, int profit, String materials)
         {
             this.key = key;
             this.cost = cost;
             this.revenue = revenue;
             this.profit = profit;
+            this.materials = materials;
         }
     }
 
@@ -147,7 +154,13 @@ public class RefinementTable extends JTable
                 .map(entry -> {
                     Refinement refinement = entry.getValue();
                     int revenue = refinement.calculateTotalSellingPrice();
-                    return new RefinementTableRow(entry.getKey(), refinement.getCost(), revenue, revenue - refinement.getCost());
+                    return new RefinementTableRow(
+                        entry.getKey(),
+                        refinement.getCost(),
+                        revenue,
+                        revenue - refinement.getCost(),
+                        formatMaterials(refinement)
+                    );
                 })
                 .forEachOrdered(this.rows::add);
             fireTableDataChanged();
@@ -162,7 +175,7 @@ public class RefinementTable extends JTable
         @Override
         public int getColumnCount()
         {
-            return 5;
+            return 6;
         }
 
         @Override
@@ -173,7 +186,8 @@ public class RefinementTable extends JTable
                 case 1 -> RefinementTable.this.language.translate("cost");
                 case 2 -> RefinementTable.this.language.translate("revenue");
                 case 3 -> RefinementTable.this.language.translate("profit");
-                case 4 -> RefinementTable.this.language.translate("actions");
+                case 4 -> RefinementTable.this.language.translate("materials");
+                case 5 -> RefinementTable.this.language.translate("actions");
                 default -> "";
             };
         }
@@ -187,7 +201,8 @@ public class RefinementTable extends JTable
                 case 1 -> row.cost;
                 case 2 -> row.revenue;
                 case 3 -> row.profit;
-                case 4 -> row;
+                case 4 -> row.materials;
+                case 5 -> row;
                 default -> null;
             };
         }
@@ -201,7 +216,36 @@ public class RefinementTable extends JTable
         @Override
         public Class<?> getColumnClass(int columnIndex)
         {
-            return columnIndex == ACTIONS_COLUMN_INDEX ? RefinementTableRow.class : Integer.class;
+            return switch (columnIndex) {
+                case ACTIONS_COLUMN_INDEX -> RefinementTableRow.class;
+                case 4 -> String.class;
+                default -> Integer.class;
+            };
+        }
+
+        private String formatMaterials(Refinement refinement)
+        {
+            if (refinement.getMaterials() == null || refinement.getMaterials().isEmpty()) {
+                return "";
+            }
+
+            return refinement.getMaterials().values().stream()
+                .sorted(Comparator.comparing(this::getMaterialDisplayName, String.CASE_INSENSITIVE_ORDER))
+                .map(material -> "%s (%s)".formatted(
+                    getMaterialDisplayName(material),
+                    Cargo.formatFromCSCU(material.getAmount())
+                ))
+                .collect(Collectors.joining(", "));
+        }
+
+        private String getMaterialDisplayName(RefinedMaterial refinedMaterial)
+        {
+            Material displayMaterial = refinedMaterial.getBaseMaterial();
+            if (displayMaterial.getReferences() != null) {
+                displayMaterial = displayMaterial.getReferences();
+            }
+
+            return Name.fetchTranslatedName(displayMaterial);
         }
     }
 

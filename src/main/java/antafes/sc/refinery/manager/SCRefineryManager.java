@@ -66,19 +66,10 @@ public class SCRefineryManager extends Application implements CommandLineRunner
         SwingUtilities.invokeLater(() -> {
             BaseWindow baseWindow = this.applicationContext.getBean(BaseWindow.class);
             new Splash(Utilities.getResourceInJar("images/splash.png"), 2000, baseWindow);
-            this.warmUp();
             baseWindow.refreshRefinementsTable();
             Toolkit kit = Toolkit.getDefaultToolkit();
             Image img = kit.createImage(Utilities.getResourceInJar("images/logo.png"));
             baseWindow.setIconImage(img);
         });
-    }
-
-    private void warmUp()
-    {
-        MaterialRepository materialRepository = this.applicationContext.getBean(MaterialRepository.class);
-        materialRepository.init();
-        RefinementRepository refinementRepository = this.applicationContext.getBean(RefinementRepository.class);
-        refinementRepository.init();
     }
 }

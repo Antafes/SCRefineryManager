@@ -22,6 +22,8 @@
 
 package antafes.sc.refinery.manager.repository.adapter;
 
+import antafes.sc.base.entity.Material;
+import antafes.sc.base.repository.MaterialRepository;
 import antafes.sc.refinery.manager.entity.RefinedMaterial;
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlRootElement;

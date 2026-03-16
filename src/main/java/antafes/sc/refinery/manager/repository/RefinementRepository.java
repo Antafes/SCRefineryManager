@@ -23,6 +23,7 @@
 package antafes.sc.refinery.manager.repository;
 
 import antafes.sc.base.repository.BaseRepository;
+import antafes.sc.base.repository.MaterialRepository;
 import antafes.sc.refinery.manager.Configuration;
 import antafes.sc.refinery.manager.entity.Refinement;
 import jakarta.xml.bind.JAXBContext;
@@ -46,6 +47,8 @@ public class RefinementRepository extends BaseRepository<Integer, Refinement>
     private final Map<Integer, Refinement> refinements = new HashMap<>();
     @Autowired
     private Configuration configuration;
+    @Autowired
+    private MaterialRepository materialRepository;
 
     @Override
     public Map<Integer, Refinement> findAll()
@@ -111,7 +114,11 @@ public class RefinementRepository extends BaseRepository<Integer, Refinement>
             this.checkFileExists(refinementsFile);
             Unmarshaller unmarshaller = JAXBContext.newInstance(RefinementListWrapper.class).createUnmarshaller();
             RefinementListWrapper wrapper = (RefinementListWrapper) unmarshaller.unmarshal(new FileInputStream(refinementsFile));
-            wrapper.refinements.forEach(refinement -> this.refinements.put(refinement.getKey(), refinement));
+            wrapper.refinements.forEach(refinement -> {
+                refinement.getMaterials()
+                    .forEach((materialKey, refinedMaterial) -> refinedMaterial.setBaseMaterial(this.materialRepository.findOne(refinedMaterial.getBaseMaterial().getKey())));
+                this.refinements.put(refinement.getKey(), refinement);
+            });
         } catch (JAXBException | IOException e) {
             throw new RuntimeException(e);
         }

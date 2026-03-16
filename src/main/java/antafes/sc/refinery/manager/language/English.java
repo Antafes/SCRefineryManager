@@ -37,6 +37,7 @@ public class English extends antafes.utilities.language.English
         this.getTranslations().put("refinements", "Refinements");
         this.getTranslations().put("revenue", "Revenue");
         this.getTranslations().put("profit", "Profit");
+        this.getTranslations().put("materials", "Materials");
         this.getTranslations().put("actions", "Actions");
         this.getTranslations().put("deleteRefinementTitle", "Delete refinement");
         this.getTranslations().put("deleteRefinementConfirm", "Do you really want to delete refinement #%d?");

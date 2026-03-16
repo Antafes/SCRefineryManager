@@ -20,36 +20,18 @@
  * @license https://www.gnu.org/licenses/lgpl.html LGPLv3
  */
 
-package antafes.sc.refinery.manager.entity;
+package antafes.sc.refinery.manager.util;
 
+import antafes.sc.base.Configuration;
 import antafes.sc.base.entity.Material;
-import jakarta.xml.bind.annotation.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
-import lombok.experimental.Accessors;
+import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.UUID;
-
-@Data
-@Accessors(chain = true)
-@NoArgsConstructor
-@XmlRootElement
-@XmlAccessorType(XmlAccessType.NONE)
-public class RefinedMaterial
+public class Name
 {
-    @XmlAttribute
-    private UUID key;
-    @XmlElement
-    @NonNull
-    private Material baseMaterial;
-    /**
-     * Amount of base material in cSCU (centi Standard Cargo Unit)
-     */
-    @XmlElement
-    private int amount;
-    @XmlElement
-    private int quality;
-    @XmlElement
-    private int sellingPrice;
+    @Autowired
+    private Configuration configuration;
+
+    public static String fetchTranslatedName(Material material) {
+        return material.getName().getEnglish();
+    }
 }

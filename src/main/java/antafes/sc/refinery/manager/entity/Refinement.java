@@ -28,6 +28,7 @@ import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -41,17 +42,19 @@ public class Refinement
     private Integer key;
     @XmlElement
     @XmlJavaTypeAdapter(RefinedMaterialsAdapter.class)
-    private Map<UUID, RefinedMaterial> materials;
+    private Map<UUID, RefinedMaterial> materials = new HashMap<>();
     @XmlElement
     private int cost;
 
     public int calculateTotalCargo()
     {
+        if (this.materials == null) return 0;
         return this.materials.values().stream().mapToInt(refinedMaterial -> refinedMaterial.getAmount() / 100).sum();
     }
 
     public int calculateTotalSellingPrice()
     {
+        if (this.materials == null) return 0;
         return this.materials.values().stream().mapToInt(RefinedMaterial::getSellingPrice).sum();
     }
 
