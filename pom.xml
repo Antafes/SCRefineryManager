@@ -150,6 +150,7 @@
                             <headerType>gui</headerType>
                             <outfile>${project.build.directory}/${project.build.finalName}.exe</outfile>
                             <jar>${project.build.directory}/${project.build.finalName}.jar</jar>
+                            <icon>${project.basedir}/resources/logo_en_64.ico</icon>
                             <errTitle>App Error</errTitle>
                             <classPath>
                                 <mainClass>antafes.sc.refinery.manager.SCRefineryManager</mainClass>
