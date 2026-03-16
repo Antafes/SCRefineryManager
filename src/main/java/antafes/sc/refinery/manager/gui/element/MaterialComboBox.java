@@ -28,6 +28,9 @@ import antafes.sc.refinery.manager.util.Name;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
 public class MaterialComboBox extends JComboBox<Material> {
@@ -56,8 +59,19 @@ public class MaterialComboBox extends JComboBox<Material> {
 
     public void populate() {
         removeAllItems();
+
         Map<String, Material> map = this.materialRepository.findAllOres();
-        map.values().forEach(this::addItem);
+        List<Material> materials = new ArrayList<>(map.values());
+        materials.sort(
+            Comparator
+                .comparing((Material m) -> {
+                    String name = Name.fetchTranslatedName(m);
+                    return name == null ? "" : name;
+                }, String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(m -> String.valueOf(m.getKey()), String.CASE_INSENSITIVE_ORDER)
+        );
+
+        materials.forEach(this::addItem);
     }
 
     public void refresh() {
