@@ -14,6 +14,14 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <distributionManagement>
+        <repository>
+            <id>github-sc-refman</id>
+            <name>Github Antafes SC Refinery Manager</name>
+            <url>https://maven.pkg.github.com/Antafes/SCRefineryManager</url>
+        </repository>
+    </distributionManagement>
+
     <dependencies>
         <dependency>
             <groupId>org.projectlombok</groupId>

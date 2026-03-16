@@ -18,12 +18,6 @@
                     </snapshots>
                 </repository>
                 <repository>
-                    <id>central</id>
-                    <url>https://repo1.maven.org/maven2</url>
-                    <releases><enabled>true</enabled></releases>
-                    <snapshots><enabled>true</enabled></snapshots>
-                </repository>
-                <repository>
 					<id>github-event-dispatcher</id>
 					<url>https://maven.pkg.github.com/antafes/eventdispatcher</url>
                     <releases><enabled>true</enabled></releases>
@@ -36,6 +30,20 @@
                     <snapshots>
                         <enabled>true</enabled>
                     </snapshots>
+                </repository>
+                <repository>
+                    <id>github-sc-refman</id>
+                    <url>https://maven.pkg.github.com/antafes/SCRefineryManager</url>
+                    <releases><enabled>true</enabled></releases>
+                    <snapshots>
+                        <enabled>true</enabled>
+                    </snapshots>
+                </repository>
+                <repository>
+                    <id>central</id>
+                    <url>https://repo1.maven.org/maven2</url>
+                    <releases><enabled>true</enabled></releases>
+                    <snapshots><enabled>true</enabled></snapshots>
                 </repository>
             </repositories> 
         </profile>
@@ -53,7 +61,12 @@
             <password>[[YourPasswordHere]]</password>
         </server>
         <server>
-            <id>github-packer-maven</id>
+            <id>github-sc-base</id>
+            <username>[[YourUsernameHere]]</username>
+            <password>[[YourPasswordHere]]</password>
+        </server>
+        <server>
+            <id>github-sc-refman</id>
             <username>[[YourUsernameHere]]</username>
             <password>[[YourPasswordHere]]</password>
         </server>
