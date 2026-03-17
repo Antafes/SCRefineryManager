@@ -22,18 +22,29 @@
 
 package antafes.sc.refinery.manager.util;
 
-import lombok.experimental.UtilityClass;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.test.context.SpringBootTest;
 
-@UtilityClass
-public class Cargo
+import static org.assertj.core.api.Assertions.assertThat;
+
+@SpringBootTest(classes = CargoTest.TestConfiguration.class)
+class CargoTest
 {
-    public String format(int amount)
+    @Test
+    void formatFromCSCURoundsUpToNextWholeSCU()
     {
-        return String.format("%d SCU", amount);
+        assertThat(Cargo.formatFromCSCU(1)).isEqualTo("1 SCU");
+        assertThat(Cargo.formatFromCSCU(100)).isEqualTo("1 SCU");
+        assertThat(Cargo.formatFromCSCU(101)).isEqualTo("2 SCU");
+        assertThat(Cargo.formatFromCSCU(199)).isEqualTo("2 SCU");
+        assertThat(Cargo.formatFromCSCU(200)).isEqualTo("2 SCU");
     }
 
-    public String formatFromCSCU(int amountInCSCU)
+    @SpringBootConfiguration
+    @EnableAutoConfiguration
+    static class TestConfiguration
     {
-        return format(Math.ceilDivExact(amountInCSCU, 100));
     }
 }
