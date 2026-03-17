@@ -36,6 +36,9 @@ import antafes.sc.refinery.manager.util.Currency;
 import antafes.sc.refinery.manager.util.Name;
 import antafes.utilities.language.LanguageInterface;
 import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.annotation.Scope;
 
 import javax.swing.*;
 import javax.swing.table.*;
@@ -48,6 +51,8 @@ import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@org.springframework.stereotype.Component
+@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class RefinementTable extends JTable
 {
     private static final int ACTIONS_COLUMN_INDEX = 5;
@@ -56,21 +61,18 @@ public class RefinementTable extends JTable
 
     private static final DateTimeFormatter CREATED_AT_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
-    private final Component parentComponent;
     private final RefinementRepository refinementRepository;
     private LanguageInterface language;
     private Configuration.Language appLanguage;
     private final RefinementTableModel refinementTableModel;
 
-    public RefinementTable(Component parentComponent,
-                           RefinementRepository refinementRepository,
-                           LanguageInterface language,
-                           Configuration.Language appLanguage)
-    {
-        this.parentComponent = parentComponent;
+    public RefinementTable(
+        @Autowired RefinementRepository refinementRepository,
+        @Autowired Configuration configuration
+    ) {
         this.refinementRepository = refinementRepository;
-        this.language = language;
-        this.appLanguage = appLanguage;
+        this.language = configuration.getLanguageObject();
+        this.appLanguage = (Configuration.Language) configuration.getLanguage();
         this.refinementTableModel = new RefinementTableModel();
         this.setModel(this.refinementTableModel);
         this.configureTable();
@@ -228,7 +230,7 @@ public class RefinementTable extends JTable
     private void deleteRefinement(int key)
     {
         int confirmation = JOptionPane.showConfirmDialog(
-            this.parentComponent,
+            this,
             String.format(this.language.translate("deleteRefinementConfirm"), key),
             this.language.translate("deleteRefinementTitle"),
             JOptionPane.YES_NO_OPTION,
@@ -357,7 +359,7 @@ public class RefinementTable extends JTable
                 Object materialKey = displayMaterial != null ? displayMaterial.getKey() : null;
                 MaterialAggregate aggregate = combined.computeIfAbsent(
                     materialKey,
-                    k -> new MaterialAggregate(displayMaterial, 0)
+                    _ -> new MaterialAggregate(displayMaterial, 0)
                 );
                 aggregate.amountCSCU += refinedMaterial.getAmount();
             });
@@ -435,7 +437,7 @@ public class RefinementTable extends JTable
             this.panel.add(editButton);
             this.panel.add(deleteButton);
 
-            editButton.addActionListener(e -> {
+            editButton.addActionListener(_ -> {
                 stopCellEditing();
                 if (this.currentRow != null) {
                     antafes.sc.refinery.manager.SCRefineryManager.getDispatcher().dispatch(
@@ -443,7 +445,7 @@ public class RefinementTable extends JTable
                     );
                 }
             });
-            deleteButton.addActionListener(e -> {
+            deleteButton.addActionListener(_ -> {
                 stopCellEditing();
                 if (this.currentRow != null) {
                     RefinementTable.this.deleteRefinement(this.currentRow.key);

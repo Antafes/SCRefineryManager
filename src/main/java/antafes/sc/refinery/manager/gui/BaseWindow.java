@@ -27,7 +27,6 @@ import antafes.sc.refinery.manager.SCRefineryManager;
 import antafes.sc.refinery.manager.gui.editRefinement.EditRefinementDialog;
 import antafes.sc.refinery.manager.gui.event.*;
 import antafes.sc.refinery.manager.gui.newRefinement.NewRefinementDialog;
-import antafes.sc.refinery.manager.repository.RefinementRepository;
 import antafes.utilities.language.LanguageInterface;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,12 +46,11 @@ public class BaseWindow extends JFrame
     private ApplicationContext applicationContext;
     @Autowired
     private Configuration configuration;
-    @Autowired
-    private RefinementRepository refinementRepository;
 
     private LanguageInterface language;
     private JPanel panel;
     private TitledBorder refinementsBorder;
+    @Autowired
     private RefinementTable refinementsTable;
     private JMenu fileMenu;
     private JMenuItem closeMenuItem;
@@ -89,12 +87,6 @@ public class BaseWindow extends JFrame
         this.panel = new JPanel(new BorderLayout());
         this.refinementsBorder = BorderFactory.createTitledBorder("");
         this.panel.setBorder(this.refinementsBorder);
-        this.refinementsTable = new RefinementTable(
-            this,
-            this.refinementRepository,
-            this.language,
-            (Configuration.Language) this.configuration.getLanguage()
-        );
 
         JScrollPane refinementsScrollPane = new JScrollPane(this.refinementsTable);
         this.panel.add(refinementsScrollPane, BorderLayout.CENTER);
