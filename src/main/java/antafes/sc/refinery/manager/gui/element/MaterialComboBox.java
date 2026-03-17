@@ -28,12 +28,12 @@ import antafes.sc.refinery.manager.util.Name;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
 
 public class MaterialComboBox extends JComboBox<Material> {
+    private static final String INERT_MATERIAL_KEY = "inert-materials";
+
     private final MaterialRepository materialRepository;
 
     public MaterialComboBox(MaterialRepository repository) {
@@ -60,18 +60,21 @@ public class MaterialComboBox extends JComboBox<Material> {
     public void populate() {
         removeAllItems();
 
-        Map<String, Material> map = this.materialRepository.findAllOres();
-        List<Material> materials = new ArrayList<>(map.values());
-        materials.sort(
+        Map<String, Material> materialsByKey = this.materialRepository.findAllOres();
+        Material inertMaterial = this.materialRepository.findOne(INERT_MATERIAL_KEY);
+        if (inertMaterial != null) {
+            materialsByKey.putIfAbsent(inertMaterial.getKey(), inertMaterial);
+        }
+
+        materialsByKey.values().stream().sorted(
             Comparator
                 .comparing((Material m) -> {
                     String name = Name.fetchTranslatedName(m);
                     return name == null ? "" : name;
                 }, String.CASE_INSENSITIVE_ORDER)
-                .thenComparing(m -> String.valueOf(m.getKey()), String.CASE_INSENSITIVE_ORDER)
-        );
-
-        materials.forEach(this::addItem);
+                .thenComparing(Material::getKey, String.CASE_INSENSITIVE_ORDER)
+        ).toList()
+            .forEach(this::addItem);
     }
 
     public void refresh() {
