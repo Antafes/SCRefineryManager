@@ -20,38 +20,20 @@
  * @license https://www.gnu.org/licenses/lgpl.html LGPLv3
  */
 
-/*
- * This file is part of SCRefineryManager.
- *
- * SCRefineryManager is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * SCRefineryManager is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with SCRefineryManager. If not, see <http://www.gnu.org/licenses/>.
- */
-
 package antafes.sc.refinery.manager.gui.editRefinement;
 
 import antafes.sc.base.entity.Material;
 import antafes.sc.base.repository.MaterialRepository;
 import antafes.sc.refinery.manager.Configuration;
 import antafes.sc.refinery.manager.SCRefineryManager;
-import antafes.sc.refinery.manager.entity.RefinedMaterial;
-import antafes.sc.refinery.manager.entity.Refinement;
+import antafes.sc.refinery.manager.dto.*;
 import antafes.sc.refinery.manager.gui.element.MaterialComboBox;
 import antafes.sc.refinery.manager.gui.event.LanguageChangedEvent;
 import antafes.sc.refinery.manager.gui.event.LanguageChangedListener;
 import antafes.sc.refinery.manager.gui.event.SaveEditRefinementEvent;
 import antafes.sc.refinery.manager.gui.event.SaveEditRefinementListener;
 import antafes.sc.refinery.manager.gui.filter.IntegerDocumentFilter;
-import antafes.sc.refinery.manager.repository.RefinementRepository;
+import antafes.sc.refinery.manager.service.RefinementService;
 import antafes.utilities.language.LanguageInterface;
 import jakarta.annotation.PostConstruct;
 import org.jspecify.annotations.NonNull;
@@ -62,8 +44,10 @@ import javax.swing.text.AbstractDocument;
 import java.awt.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 @org.springframework.stereotype.Component
 public class EditRefinementPanel extends JPanel
@@ -73,7 +57,7 @@ public class EditRefinementPanel extends JPanel
     @Autowired
     private MaterialRepository materialRepository;
     @Autowired
-    private RefinementRepository refinementRepository;
+    private RefinementService refinementService;
 
     private LanguageInterface language;
 
@@ -164,7 +148,6 @@ public class EditRefinementPanel extends JPanel
         JPanel materialsWrapper = new JPanel(new BorderLayout());
         materialsWrapper.add(this.materialsContainer, BorderLayout.NORTH);
         JScrollPane scroll = new JScrollPane(materialsWrapper);
-        // Wider so all material-row fields (incl. long material names) are visible.
         scroll.setPreferredSize(new Dimension(700, 150));
         scroll.setMinimumSize(new Dimension(700, 150));
 
@@ -179,13 +162,12 @@ public class EditRefinementPanel extends JPanel
         constraints.fill = GridBagConstraints.HORIZONTAL;
 
         this.addMaterialRowButton = new JButton();
-        this.addMaterialRowButton.addActionListener(e -> addMaterialRow());
+        this.addMaterialRowButton.addActionListener(e -> this.addMaterialRow());
 
         constraints.gridx = 0;
         constraints.gridy = 4;
         constraints.gridwidth = 2;
         add(this.addMaterialRowButton, constraints);
-        constraints.gridwidth = 1;
     }
 
     private void setFieldTexts()
@@ -205,21 +187,13 @@ public class EditRefinementPanel extends JPanel
         SCRefineryManager.getDispatcher().addListener(
             SaveEditRefinementEvent.class,
             new SaveEditRefinementListener(event -> {
-                if (!validateInputs()) {
+                SaveRefinementResult saveResult = this.refinementService.update(event.getKey(), this.collectForm());
+                if (saveResult.successful()) {
+                    event.getDialog().dispose();
                     return;
                 }
 
-                Refinement refinement = buildRefinementFromInputs();
-                refinement.setKey(event.getKey());
-
-                Refinement existing = this.refinementRepository.findOne(event.getKey());
-                if (existing != null) {
-                    refinement.setCreatedAt(existing.getCreatedAt());
-                }
-
-                refinementRepository.update(event.getKey(), refinement);
-
-                event.getDialog().dispose();
+                this.applyValidation(saveResult.validation());
             })
         );
         SCRefineryManager.getDispatcher().addListener(
@@ -233,43 +207,21 @@ public class EditRefinementPanel extends JPanel
 
     public void loadRefinement(@NonNull Integer key)
     {
-        Refinement refinement = this.refinementRepository.findOne(key);
-        if (refinement == null) {
-            throw new IllegalArgumentException("Unknown refinement key: " + key);
-        }
-
-        clearValidationErrors();
-        this.costField.setText(String.valueOf(refinement.getCost()));
-
-        for (int i = this.materialsContainer.getComponentCount() - 1; i >= 1; i--) {
-            this.materialsContainer.remove(i);
-        }
-        this.materialRows.clear();
-
-        if (refinement.getMaterials() == null || refinement.getMaterials().isEmpty()) {
-            addMaterialRow();
-        } else {
-            refinement.getMaterials().values().forEach(this::addMaterialRow);
-        }
-
-        this.materialsContainer.revalidate();
-        this.materialsContainer.repaint();
-        revalidate();
-        repaint();
+        this.applyForm(this.refinementService.findForm(key));
     }
 
     private void addMaterialRow()
     {
-        addMaterialRow(null);
+        this.addMaterialRow(this.refinementService.createEditMaterialRow());
     }
 
-    private void addMaterialRow(RefinedMaterial initial)
+    private void addMaterialRow(RefinementMaterialForm initial)
     {
         JPanel row = new JPanel(new GridBagLayout());
         GridBagConstraints rowConstraints = new GridBagConstraints();
         rowConstraints.insets = new Insets(2, 2, 2, 2);
         rowConstraints.fill = GridBagConstraints.HORIZONTAL;
-        MaterialComboBox materialCombo = getMaterialComboBox();
+        MaterialComboBox materialCombo = this.getMaterialComboBox();
 
         rowConstraints.gridx = 0;
         rowConstraints.gridy = 0;
@@ -323,7 +275,7 @@ public class EditRefinementPanel extends JPanel
         rowConstraints.weightx = 0.5;
         row.add(revenueErrorLabel, rowConstraints);
 
-        JButton remove = createRemoveButton(row, materialRow);
+        JButton remove = this.createRemoveButton(row, materialRow);
         rowConstraints.gridy = 0;
         rowConstraints.gridx = 4;
         rowConstraints.weightx = 0;
@@ -334,22 +286,24 @@ public class EditRefinementPanel extends JPanel
         materialCombo.refresh();
 
         if (initial != null) {
-            selectMaterial(materialCombo, initial.getBaseMaterial());
-            amountField.setText(String.valueOf(initial.getAmount()));
-            qualityField.setText(String.valueOf(initial.getQuality()));
-            revenueField.setText(String.valueOf(initial.getSellingPrice()));
+            this.selectMaterial(materialCombo, initial.material());
+            amountField.setText(initial.amount() == null ? "" : initial.amount());
+            qualityField.setText(initial.quality() == null ? "" : initial.quality());
+            revenueField.setText(initial.revenue() == null ? "" : initial.revenue());
         }
 
-        updateRemoveButtonsState();
+        this.updateRemoveButtonsState();
     }
 
     private void selectMaterial(MaterialComboBox comboBox, Material material)
     {
-        if (material == null) return;
+        if (material == null) {
+            return;
+        }
 
         for (int i = 0; i < comboBox.getItemCount(); i++) {
             Object item = comboBox.getItemAt(i);
-            if (item instanceof Material m && Objects.equals(m.getKey(), material.getKey())) {
+            if (item instanceof Material listedMaterial && Objects.equals(listedMaterial.getKey(), material.getKey())) {
                 comboBox.setSelectedIndex(i);
                 return;
             }
@@ -369,19 +323,25 @@ public class EditRefinementPanel extends JPanel
                 this.materialsContainer.revalidate();
                 this.materialsContainer.repaint();
             } else {
-                if (materialRow.materialField().getItemCount() > 0) {
-                    materialRow.materialField().setSelectedIndex(0);
-                }
-                materialRow.amountField().setText("");
-                materialRow.qualityField().setText("");
-                materialRow.revenueField().setText("");
-                hideError(materialRow.materialErrorLabel());
-                hideError(materialRow.amountErrorLabel());
-                hideError(materialRow.revenueErrorLabel());
+                this.applyMaterialRow(materialRow, this.refinementService.createEditMaterialRow());
+                this.hideError(materialRow.materialErrorLabel());
+                this.hideError(materialRow.amountErrorLabel());
+                this.hideError(materialRow.revenueErrorLabel());
             }
-            updateRemoveButtonsState();
+            this.updateRemoveButtonsState();
         });
         return remove;
+    }
+
+    private void applyMaterialRow(MaterialRow materialRow, RefinementMaterialForm form)
+    {
+        if (materialRow.materialField().getItemCount() > 0) {
+            materialRow.materialField().setSelectedIndex(0);
+        }
+        this.selectMaterial(materialRow.materialField(), form.material());
+        materialRow.amountField().setText(form.amount() == null ? "" : form.amount());
+        materialRow.qualityField().setText(form.quality() == null ? "" : form.quality());
+        materialRow.revenueField().setText(form.revenue() == null ? "" : form.revenue());
     }
 
     private MaterialComboBox getMaterialComboBox()
@@ -402,91 +362,96 @@ public class EditRefinementPanel extends JPanel
             .forEachOrdered(btn -> btn.setEnabled(count > 1));
     }
 
-    private Refinement buildRefinementFromInputs()
+    private RefinementForm collectForm()
     {
-        Refinement refinement = new Refinement();
-        Integer cost = parseInteger(this.costField.getText());
-        if (cost != null) {
-            refinement.setCost(cost);
-        }
-
-        Map<UUID, RefinedMaterial> materials = new HashMap<>();
-        for (MaterialRow materialRow : this.materialRows) {
-            Material material = getSelectedMaterial(materialRow);
-            Integer amount = parseInteger(materialRow.amountField().getText());
-            Integer quality = parseInteger(materialRow.qualityField().getText());
-            Integer revenue = parseInteger(materialRow.revenueField().getText());
-
-            if (material != null) {
-                RefinedMaterial rm = new RefinedMaterial();
-                rm.setKey(UUID.randomUUID());
-                rm.setBaseMaterial(material);
-                rm.setAmount(amount == null ? 0 : amount);
-                rm.setQuality(quality == null ? 0 : quality);
-                rm.setSellingPrice(revenue == null ? 0 : revenue);
-                materials.put(rm.getKey(), rm);
-            }
-        }
-
-        refinement.setMaterials(materials);
-        return refinement;
+        return new RefinementForm(
+            this.costField.getText(),
+            this.materialRows.stream()
+                .map(materialRow -> new RefinementMaterialForm(
+                    this.getSelectedMaterial(materialRow),
+                    materialRow.amountField().getText(),
+                    materialRow.qualityField().getText(),
+                    materialRow.revenueField().getText()
+                ))
+                .toList()
+        );
     }
 
-    private boolean validateInputs()
+    private void applyForm(RefinementForm form)
     {
-        clearValidationErrors();
+        this.clearValidationErrors();
+        this.costField.setText(form.cost() == null ? "" : form.cost());
 
-        boolean valid = true;
-        Component firstInvalidComponent = null;
+        for (int i = this.materialsContainer.getComponentCount() - 1; i >= 1; i--) {
+            this.materialsContainer.remove(i);
+        }
+        this.materialRows.clear();
 
-        if (parseInteger(this.costField.getText()) == null) {
-            showError(this.costErrorLabel, "costRequired");
-            valid = false;
-            firstInvalidComponent = this.costField;
+        List<RefinementMaterialForm> materials = form.materials();
+        if (materials == null || materials.isEmpty()) {
+            this.addMaterialRow(this.refinementService.createEditMaterialRow());
+        } else {
+            materials.forEach(this::addMaterialRow);
         }
 
-        for (MaterialRow materialRow : this.materialRows) {
-            if (getSelectedMaterial(materialRow) == null) {
-                showError(materialRow.materialErrorLabel(), "materialRequired");
-                valid = false;
-                if (firstInvalidComponent == null) {
-                    firstInvalidComponent = materialRow.materialField();
-                }
-            }
-
-            if (parseInteger(materialRow.amountField().getText()) == null) {
-                showError(materialRow.amountErrorLabel(), "amountRequired");
-                valid = false;
-                if (firstInvalidComponent == null) {
-                    firstInvalidComponent = materialRow.amountField();
-                }
-            }
-
-            if (parseInteger(materialRow.revenueField().getText()) == null) {
-                showError(materialRow.revenueErrorLabel(), "revenueRequired");
-                valid = false;
-                if (firstInvalidComponent == null) {
-                    firstInvalidComponent = materialRow.revenueField();
-                }
-            }
-        }
-
-        if (firstInvalidComponent != null) {
-            firstInvalidComponent.requestFocusInWindow();
-        }
-
+        this.materialsContainer.revalidate();
+        this.materialsContainer.repaint();
         revalidate();
         repaint();
-        return valid;
+    }
+
+    private void applyValidation(RefinementValidation validation)
+    {
+        this.clearValidationErrors();
+        this.showErrorIfPresent(this.costErrorLabel, validation.costErrorKey());
+
+        for (int rowIndex = 0; rowIndex < Math.min(this.materialRows.size(), validation.materialRows().size()); rowIndex++) {
+            MaterialRow materialRow = this.materialRows.get(rowIndex);
+            MaterialRowValidation rowValidation = validation.materialRows().get(rowIndex);
+            this.showErrorIfPresent(materialRow.materialErrorLabel(), rowValidation.materialErrorKey());
+            this.showErrorIfPresent(materialRow.amountErrorLabel(), rowValidation.amountErrorKey());
+            this.showErrorIfPresent(materialRow.revenueErrorLabel(), rowValidation.revenueErrorKey());
+        }
+
+        this.focusInvalidField(validation.firstInvalidField());
+        revalidate();
+        repaint();
+    }
+
+    private void focusInvalidField(InvalidField invalidField)
+    {
+        if (invalidField == null) {
+            return;
+        }
+
+        Component componentToFocus = switch (invalidField.type()) {
+            case COST -> this.costField;
+            case MATERIAL -> this.getMaterialRowComponent(invalidField.rowIndex(), MaterialRow::materialField);
+            case AMOUNT -> this.getMaterialRowComponent(invalidField.rowIndex(), MaterialRow::amountField);
+            case REVENUE -> this.getMaterialRowComponent(invalidField.rowIndex(), MaterialRow::revenueField);
+        };
+
+        if (componentToFocus != null) {
+            componentToFocus.requestFocusInWindow();
+        }
+    }
+
+    private Component getMaterialRowComponent(Integer rowIndex, MaterialRowComponentExtractor extractor)
+    {
+        if (rowIndex == null || rowIndex < 0 || rowIndex >= this.materialRows.size()) {
+            return null;
+        }
+
+        return extractor.extract(this.materialRows.get(rowIndex));
     }
 
     private void clearValidationErrors()
     {
-        hideError(this.costErrorLabel);
+        this.hideError(this.costErrorLabel);
         this.materialRows.forEach(materialRow -> {
-            hideError(materialRow.materialErrorLabel());
-            hideError(materialRow.amountErrorLabel());
-            hideError(materialRow.revenueErrorLabel());
+            this.hideError(materialRow.materialErrorLabel());
+            this.hideError(materialRow.amountErrorLabel());
+            this.hideError(materialRow.revenueErrorLabel());
         });
     }
 
@@ -496,6 +461,13 @@ public class EditRefinementPanel extends JPanel
         label.setForeground(Color.RED);
         label.setVisible(false);
         return label;
+    }
+
+    private void showErrorIfPresent(JLabel label, String messageKey)
+    {
+        if (messageKey != null) {
+            this.showError(label, messageKey);
+        }
     }
 
     private void showError(JLabel label, String messageKey)
@@ -510,23 +482,16 @@ public class EditRefinementPanel extends JPanel
         label.setVisible(false);
     }
 
-    private Integer parseInteger(String text)
-    {
-        if (text == null || text.isBlank()) {
-            return null;
-        }
-
-        try {
-            return Integer.parseInt(text);
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
-    }
-
     private Material getSelectedMaterial(MaterialRow materialRow)
     {
         Object selectedItem = materialRow.materialField().getSelectedItem();
         return selectedItem instanceof Material material ? material : null;
+    }
+
+    @FunctionalInterface
+    private interface MaterialRowComponentExtractor
+    {
+        Component extract(MaterialRow materialRow);
     }
 
     private record MaterialRow(

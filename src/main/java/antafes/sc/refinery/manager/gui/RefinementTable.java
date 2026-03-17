@@ -22,18 +22,14 @@
 
 package antafes.sc.refinery.manager.gui;
 
-import antafes.sc.base.entity.Material;
 import antafes.sc.refinery.manager.Configuration;
-import antafes.sc.refinery.manager.entity.RefinedMaterial;
-import antafes.sc.refinery.manager.entity.Refinement;
+import antafes.sc.refinery.manager.dto.RefinementTableRowData;
 import antafes.sc.refinery.manager.gui.element.renderer.MultiLineCellRenderer;
 import antafes.sc.refinery.manager.gui.element.renderer.PaddedDefaultTableCellRenderer;
 import antafes.sc.refinery.manager.gui.icon.PenIcon;
 import antafes.sc.refinery.manager.gui.icon.TrashIcon;
-import antafes.sc.refinery.manager.repository.RefinementRepository;
-import antafes.sc.refinery.manager.util.Cargo;
+import antafes.sc.refinery.manager.service.RefinementService;
 import antafes.sc.refinery.manager.util.Currency;
-import antafes.sc.refinery.manager.util.Name;
 import antafes.utilities.language.LanguageInterface;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,9 +43,8 @@ import java.awt.event.MouseEvent;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @org.springframework.stereotype.Component
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
@@ -61,16 +56,16 @@ public class RefinementTable extends JTable
 
     private static final DateTimeFormatter CREATED_AT_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
-    private final RefinementRepository refinementRepository;
+    private final RefinementService refinementService;
     private LanguageInterface language;
     private Configuration.Language appLanguage;
     private final RefinementTableModel refinementTableModel;
 
     public RefinementTable(
-        @Autowired RefinementRepository refinementRepository,
+        @Autowired RefinementService refinementService,
         @Autowired Configuration configuration
     ) {
-        this.refinementRepository = refinementRepository;
+        this.refinementService = refinementService;
         this.language = configuration.getLanguageObject();
         this.appLanguage = (Configuration.Language) configuration.getLanguage();
         this.refinementTableModel = new RefinementTableModel();
@@ -102,7 +97,7 @@ public class RefinementTable extends JTable
 
     public void refreshData()
     {
-        this.refinementTableModel.setRows(this.refinementRepository.findAll());
+        this.refinementTableModel.setRows(this.refinementService.fetchTableRows());
         resetRowHeights();
     }
 
@@ -238,7 +233,7 @@ public class RefinementTable extends JTable
         );
 
         if (confirmation == JOptionPane.YES_OPTION) {
-            this.refinementRepository.remove(key);
+            this.refinementService.remove(key);
             this.refreshData();
         }
     }
@@ -254,30 +249,14 @@ public class RefinementTable extends JTable
         return button;
     }
 
-    private record RefinementTableRow(int key, int cost, int revenue, int profit, String materials, ZonedDateTime createdAt) {}
-
     private class RefinementTableModel extends AbstractTableModel
     {
-        private final List<RefinementTableRow> rows = new ArrayList<>();
+        private final List<RefinementTableRowData> rows = new ArrayList<>();
 
-        public void setRows(Map<Integer, Refinement> refinements)
+        public void setRows(List<RefinementTableRowData> refinements)
         {
             this.rows.clear();
-            refinements.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey(Comparator.naturalOrder()))
-                .map(entry -> {
-                    Refinement refinement = entry.getValue();
-                    int revenue = refinement.calculateTotalSellingPrice();
-                    return new RefinementTableRow(
-                        entry.getKey(),
-                        refinement.getCost(),
-                        revenue,
-                        revenue - refinement.getCost(),
-                        formatMaterials(refinement),
-                        refinement.getCreatedAt()
-                    );
-                })
-                .forEachOrdered(this.rows::add);
+            this.rows.addAll(refinements);
             fireTableDataChanged();
         }
 
@@ -310,13 +289,13 @@ public class RefinementTable extends JTable
         @Override
         public Object getValueAt(int rowIndex, int columnIndex)
         {
-            RefinementTableRow row = this.rows.get(rowIndex);
+            RefinementTableRowData row = this.rows.get(rowIndex);
             return switch (columnIndex) {
-                case 0 -> row.key;
-                case 1 -> Currency.format(row.cost, RefinementTable.this.appLanguage);
-                case 2 -> Currency.format(row.revenue, RefinementTable.this.appLanguage);
-                case 3 -> Currency.format(row.profit, RefinementTable.this.appLanguage);
-                case 4 -> row.materials;
+                case 0 -> row.key();
+                case 1 -> Currency.format(row.cost(), RefinementTable.this.appLanguage);
+                case 2 -> Currency.format(row.revenue(), RefinementTable.this.appLanguage);
+                case 3 -> Currency.format(row.profit(), RefinementTable.this.appLanguage);
+                case 4 -> row.materials();
                 case 5 -> row;
                 default -> null;
             };
@@ -332,7 +311,7 @@ public class RefinementTable extends JTable
         public Class<?> getColumnClass(int columnIndex)
         {
             return switch (columnIndex) {
-                case ACTIONS_COLUMN_INDEX -> RefinementTableRow.class;
+                case ACTIONS_COLUMN_INDEX -> RefinementTableRowData.class;
                 case 0 -> Integer.class;
                 case 1, 2, 3, 4 -> String.class;
                 default -> Object.class;
@@ -345,59 +324,6 @@ public class RefinementTable extends JTable
                 return null;
             }
             return this.rows.get(modelRow).createdAt();
-        }
-
-        private String formatMaterials(Refinement refinement)
-        {
-            if (refinement.getMaterials() == null || refinement.getMaterials().isEmpty()) {
-                return "";
-            }
-
-            Map<Object, MaterialAggregate> combined = new HashMap<>();
-            refinement.getMaterials().values().forEach(refinedMaterial -> {
-                Material displayMaterial = getDisplayMaterial(refinedMaterial);
-                Object materialKey = displayMaterial != null ? displayMaterial.getKey() : null;
-                MaterialAggregate aggregate = combined.computeIfAbsent(
-                    materialKey,
-                    _ -> new MaterialAggregate(displayMaterial, 0)
-                );
-                aggregate.amountCSCU += refinedMaterial.getAmount();
-            });
-
-            return combined.values().stream()
-                .sorted(Comparator.comparing(a -> getMaterialDisplayName(a.material), String.CASE_INSENSITIVE_ORDER))
-                .map(a -> "%s (%s)".formatted(
-                    getMaterialDisplayName(a.material),
-                    Cargo.formatFromCSCU(a.amountCSCU)
-                ))
-                .collect(Collectors.joining(", "));
-        }
-
-        private Material getDisplayMaterial(RefinedMaterial refinedMaterial)
-        {
-            if (refinedMaterial == null) return null;
-            Material displayMaterial = refinedMaterial.getBaseMaterial();
-            if (displayMaterial.getReferences() != null) {
-                displayMaterial = displayMaterial.getReferences();
-            }
-            return displayMaterial;
-        }
-
-        private String getMaterialDisplayName(Material displayMaterial)
-        {
-            return displayMaterial == null ? "" : Name.fetchTranslatedName(displayMaterial);
-        }
-
-        private static class MaterialAggregate
-        {
-            private final Material material;
-            private int amountCSCU;
-
-            private MaterialAggregate(Material material, int amountCSCU)
-            {
-                this.material = material;
-                this.amountCSCU = amountCSCU;
-            }
         }
     }
 
@@ -428,7 +354,7 @@ public class RefinementTable extends JTable
     private class ActionButtonsCellEditor extends AbstractCellEditor implements TableCellEditor
     {
         private final JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 2));
-        private RefinementTableRow currentRow;
+        private RefinementTableRowData currentRow;
 
         private ActionButtonsCellEditor()
         {
@@ -441,14 +367,14 @@ public class RefinementTable extends JTable
                 stopCellEditing();
                 if (this.currentRow != null) {
                     antafes.sc.refinery.manager.SCRefineryManager.getDispatcher().dispatch(
-                        new antafes.sc.refinery.manager.gui.event.EditRefinementEvent(this.currentRow.key)
+                        new antafes.sc.refinery.manager.gui.event.EditRefinementEvent(this.currentRow.key())
                     );
                 }
             });
             deleteButton.addActionListener(_ -> {
                 stopCellEditing();
                 if (this.currentRow != null) {
-                    RefinementTable.this.deleteRefinement(this.currentRow.key);
+                    RefinementTable.this.deleteRefinement(this.currentRow.key());
                 }
             });
         }
@@ -462,7 +388,7 @@ public class RefinementTable extends JTable
         @Override
         public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column)
         {
-            this.currentRow = (RefinementTableRow) value;
+            this.currentRow = (RefinementTableRowData) value;
             this.panel.setBackground(table.getSelectionBackground());
 
             // Keep the editor border empty to avoid shrinking the content area.
