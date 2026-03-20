@@ -252,24 +252,32 @@ public class RefinementService
             return "";
         }
 
-        Map<Object, MaterialAggregate> combined = new LinkedHashMap<>();
+        Map<String, MaterialAggregate> combined = new LinkedHashMap<>();
         refinement.getMaterials().values().forEach(refinedMaterial -> {
             Material displayMaterial = this.getDisplayMaterial(refinedMaterial);
             Object materialKey = displayMaterial != null ? displayMaterial.getKey() : null;
+            String aggregateKey = materialKey + ":" + refinedMaterial.getQuality();
             combined.compute(
-                materialKey,
+                aggregateKey,
                 (_, aggregate) -> aggregate == null
-                    ? new MaterialAggregate(displayMaterial, refinedMaterial.getAmount())
+                    ? new MaterialAggregate(displayMaterial, refinedMaterial.getAmount(), refinedMaterial.getQuality())
                     : aggregate.addAmount(refinedMaterial.getAmount())
             );
         });
 
         return combined.values().stream()
             .sorted(Comparator.comparing(a -> this.getMaterialDisplayName(a.material()), String.CASE_INSENSITIVE_ORDER))
-            .map(a -> "%s (%s)".formatted(
-                this.getMaterialDisplayName(a.material()),
-                Cargo.formatFromCSCU(a.amountCSCU())
-            ))
+            .map(a -> a.quality() > 0
+                ? "%s (%s, %d)".formatted(
+                    this.getMaterialDisplayName(a.material()),
+                    Cargo.formatFromCSCU(a.amountCSCU()),
+                    a.quality()
+                )
+                : "%s (%s)".formatted(
+                    this.getMaterialDisplayName(a.material()),
+                    Cargo.formatFromCSCU(a.amountCSCU())
+                )
+            )
             .collect(Collectors.joining(", "));
     }
 
@@ -291,11 +299,11 @@ public class RefinementService
         return displayMaterial == null ? "" : Name.fetchTranslatedName(displayMaterial);
     }
 
-    private record MaterialAggregate(Material material, int amountCSCU)
+    private record MaterialAggregate(Material material, int amountCSCU, int quality)
     {
         private MaterialAggregate addAmount(int additionalAmountCSCU)
         {
-            return new MaterialAggregate(this.material, this.amountCSCU + additionalAmountCSCU);
+            return new MaterialAggregate(this.material, this.amountCSCU + additionalAmountCSCU, this.quality);
         }
     }
 }

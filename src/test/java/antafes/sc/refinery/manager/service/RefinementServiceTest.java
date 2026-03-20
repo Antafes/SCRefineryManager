@@ -128,9 +128,9 @@ class RefinementServiceTest
         Material quartzOreB = materialWithReference("quartz-ore-b", quartzReference);
 
         Map<UUID, RefinedMaterial> materials = new LinkedHashMap<>();
-        materials.put(UUID.randomUUID(), refinedMaterial(quartzOreA, 101, 50));
-        materials.put(UUID.randomUUID(), refinedMaterial(quartzOreB, 50, 150));
-        materials.put(UUID.randomUUID(), refinedMaterial(aluminium, 100, 200));
+        materials.put(UUID.randomUUID(), refinedMaterial(quartzOreA, 101, 0, 50));
+        materials.put(UUID.randomUUID(), refinedMaterial(quartzOreB, 50, 0, 150));
+        materials.put(UUID.randomUUID(), refinedMaterial(aluminium, 100, 85, 200));
 
         Map<Integer, Refinement> refinements = new LinkedHashMap<>();
         refinements.put(2, new Refinement()
@@ -147,8 +147,32 @@ class RefinementServiceTest
             assertThat(row.cost()).isEqualTo(180);
             assertThat(row.revenue()).isEqualTo(400);
             assertThat(row.profit()).isEqualTo(220);
-            assertThat(row.materials()).isEqualTo("Aluminium (1 SCU), Quartz (2 SCU)");
+            assertThat(row.materials()).isEqualTo("Aluminium (1 SCU, 85), Quartz (2 SCU)");
         });
+    }
+
+    @Test
+    void fetchTableRowsListsSameMaterialWithDifferentQualitiesSeparately()
+    {
+        Material aluminium = material("aluminium", "Aluminium");
+
+        Map<UUID, RefinedMaterial> materials = new LinkedHashMap<>();
+        materials.put(UUID.randomUUID(), refinedMaterial(aluminium, 100, 80, 200));
+        materials.put(UUID.randomUUID(), refinedMaterial(aluminium, 50, 90, 150));
+
+        Map<Integer, Refinement> refinements = new LinkedHashMap<>();
+        refinements.put(3, new Refinement()
+            .setKey(3)
+            .setCost(100)
+            .setCreatedAt(ZonedDateTime.of(2026, 3, 17, 10, 0, 0, 0, ZoneOffset.UTC))
+            .setMaterials(materials));
+        when(this.refinementRepository.findAll()).thenReturn(refinements);
+
+        List<RefinementTableRowData> rows = this.refinementService.fetchTableRows();
+
+        assertThat(rows).singleElement().satisfies(row ->
+            assertThat(row.materials()).isEqualTo("Aluminium (1 SCU, 80), Aluminium (1 SCU, 90)")
+        );
     }
 
     @Test
@@ -156,7 +180,7 @@ class RefinementServiceTest
     {
         Material material = material("borase", "Borase");
         Map<UUID, RefinedMaterial> materials = new LinkedHashMap<>();
-        materials.put(UUID.randomUUID(), refinedMaterial(material, 400, 900));
+        materials.put(UUID.randomUUID(), refinedMaterial(material, 400, 0, 900));
         when(this.refinementRepository.findOne(7)).thenReturn(new Refinement()
             .setKey(7)
             .setCost(450)
@@ -239,13 +263,13 @@ class RefinementServiceTest
         verify(this.refinementRepository).remove(5);
     }
 
-    private static RefinedMaterial refinedMaterial(Material material, int amount, int sellingPrice)
+    private static RefinedMaterial refinedMaterial(Material material, int amount, int quality, int sellingPrice)
     {
         return new RefinedMaterial()
             .setKey(UUID.randomUUID())
             .setBaseMaterial(material)
             .setAmount(amount)
-            .setQuality(0)
+            .setQuality(quality)
             .setSellingPrice(sellingPrice);
     }
 
